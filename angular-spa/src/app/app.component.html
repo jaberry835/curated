@@ -1,0 +1,13 @@
+<a class="navbar navbar-dark bg-primary" variant="dark" href="/">
+	<a class="navbar-brand mx-2"  > Chat with Data </a>
+		<a class="mx-2">
+			<button *ngIf="!loginDisplay" class="btn btn-secondary" (click)="login()">Sign In</button>
+			<button *ngIf="loginDisplay" class="btn btn-secondary" (click)="logout()">Sign Out</button>
+		</a>
+</a>
+	<!-- <a class="profileButton">
+		<a [routerLink]="['profile']" class="btn btn-secondary" *ngIf="loginDisplay">View Profile</a> 
+	</a> -->
+<div class="container">
+	<router-outlet></router-outlet>
+</div>
