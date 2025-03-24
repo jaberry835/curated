@@ -77,11 +77,7 @@ export class AiChatService {
               "top_n_documents": 5,
               "authentication": {
                 "type": "api_key",
-<<<<<<< HEAD
                 "key": ""
-=======
-                "key": ""
->>>>>>> 8c575bb (adding in basic chat service in angular)
               },
               "embedding_dependency": {
                 "type": "gpt-4o",
