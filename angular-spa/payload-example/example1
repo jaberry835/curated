@@ -21,7 +21,6 @@
       "strictness": 3,
           "top_n_documents": 5,
      "in_scope": true,
-        "strictness": 3,
  "semantic_configuration": "default",
           "query_type": "vector_semantic_hybrid",
      
