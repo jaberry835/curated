@@ -4,4 +4,3 @@ dist
 environment.ts
 environment.development.ts
 angular-spa/src/environments/environment.development.ts
-angular-spa/src/environments/environment.development.ts
