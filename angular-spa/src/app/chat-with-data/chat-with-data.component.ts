@@ -7,11 +7,10 @@ import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
 // Required for Angular multi-browser support
 import { EventMessage, EventType, AuthenticationResult } from '@azure/msal-browser';
 
-
 // Required for RJXS observables
 import { filter } from 'rxjs/operators';
-import { Aichat2ServiceService } from '../aichat2.service.service';
 import { AiChatService } from '../aichat.service';
+
 @Component({
   selector: 'app-chat-with-data',
   standalone: true,

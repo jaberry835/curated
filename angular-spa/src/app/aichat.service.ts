@@ -11,9 +11,6 @@ interface ChatMessage {
   content: string;
 }
 
-
-
-
 @Injectable({
   providedIn: 'root'
 })
@@ -24,12 +21,12 @@ export class AiChatService {
   // Your deployment ID—often a model like "gpt-35-turbo"
   private deploymentId = "gpt-4o";
   // Replace with your resource's endpoint and key
-  endpoint = "https://jb-ai-test.openai.azure.com";
+  endpoint = environment.aiEndpoint; //"https://jb-ai-test.openai.azure.com";
   apiKey = environment.aiKey;
-  apiVersion = "2024-05-01-preview";
+  apiVersion = environment.apiVersion;// "2024-05-01-preview";
   // Your Azure Cognitive Search endpoint, and index name
-  azureSearchEndpoint = "https://jb-ai-test-search.search.windows.net";
-  azureSearchIndexName = "runtestidx"
+  azureSearchEndpoint = environment.azureSearchEndpoint; //"https://jb-ai-test-search.search.windows.net";
+  azureSearchIndexName = environment.azureSearchIndexName; //"runtestidx"
   azureSearchKey = environment.azureSearchKey;
   //https://jb-ai-test.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview
   constructor() {
@@ -59,35 +56,36 @@ export class AiChatService {
             content: "Tell me something from the news from my data"
           }
         ],
+
         max_tokens: 550,
-       
         "data_sources": [
-          {
-            "type": "azure_search",
-            "parameters": {
-              "endpoint": "'$search_endpoint'",
-              "index_name": "runtestidx",
-              "semantic_configuration": "default",
-              "query_type": "vector_semantic_hybrid",
-              "fields_mapping": {},
-              "in_scope": true,
-              "role_information": "",
-              "filter": null,
-              "strictness": 3,
-              "top_n_documents": 5,
-              "authentication": {
-                "type": "api_key",
-                "key": ""
-              },
-              "embedding_dependency": {
-                "type": "gpt-4o",
-                "deployment_name": "text-embedding-ada-002"
-              },
-              "key": "'$search_key'",
-              "indexName": "'$search_index'"
-            }
-          }
-        ]
+    {
+      "type": "azure_search",
+      "parameters": {
+        "endpoint": environment.azureSearchEndpoint,
+        "index_name": "runtestidx",
+        "semantic_configuration": "default",
+        "query_type": "vector_semantic_hybrid",
+        "fields_mapping": {},
+        "in_scope": true,
+        "role_information": "",
+        "filter": null,
+        "strictness": 3,
+        "top_n_documents": 11,
+        "authentication": {
+          "type": "api_key",
+          "key": ""
+        },
+        "embedding_dependency": {
+          "type": "gpt-4o",
+          "deployment_name": "text-embedding-ada-002"
+        },
+        "key": environment.azureSearchKey,
+        "indexName": environment.azureSearchIndexName
+      }
+    }
+  ],
+
       });
 
       let txtresponse = "";
