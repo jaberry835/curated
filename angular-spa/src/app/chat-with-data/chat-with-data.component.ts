@@ -1,5 +1,5 @@
 // Required for Angular
-import { Component, OnInit, NgModule } from '@angular/core';
+import { Component, OnInit, NgModule, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 // Required for MSAL
 import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
@@ -29,7 +29,8 @@ interface ChatMessage {
 export class ChatWithDataComponent {
   messages: ChatMessage[] = [];
   userInput: string = '';
-
+  @ViewChild('chatContainer') chatContainer!: ElementRef;
+ 
   constructor(
     private authService: MsalService,
     private msalBroadcastService: MsalBroadcastService,
@@ -58,17 +59,19 @@ export class ChatWithDataComponent {
 
   }
 
+
   async click() {
     console.log("click");
     this.messages.push({
       role: 'user',
       content: this.userInput
     });
-    var response = await this.aiChatService.getChatResponseStreaming([{ role: "user", content: this.userInput }]);
-
     
+    var response = await this.aiChatService.getChatResponseStreaming([{ role: "user", content: this.userInput }]);
+    this.userInput = '';
     // handle the response 
     let txtresponse = "";
+    this.scrollToBottom();
     for await (const chunk of response) {
       for (const choice of chunk.choices) {
         const newText = choice.delta.content;
@@ -85,8 +88,23 @@ export class ChatWithDataComponent {
       content: txtresponse
     });
 
-    //this.messages.push(msgResponse);
-
-    console.log(txtresponse);
+      
+    this.scrollToBottom();
+   
   }
+  onEnter(): void {
+   
+    this.click();
+  }
+
+  // Scroll to the bottom of the chat container
+  private scrollToBottom(): void {
+    if (this.chatContainer) {
+      this.chatContainer.nativeElement.scroll({
+        top: this.chatContainer.nativeElement.scrollHeight,
+        behavior: 'smooth' // Enables smooth scrolling
+      });
+    }
+  }
+
 }
