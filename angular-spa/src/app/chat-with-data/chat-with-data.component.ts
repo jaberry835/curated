@@ -11,16 +11,16 @@ import { EventMessage, EventType, AuthenticationResult } from '@azure/msal-brows
 import { filter } from 'rxjs/operators';
 import { AiChatService } from '../aichat.service';
 import { FormsModule } from '@angular/forms';
-
+import { MarkdownModule } from 'ngx-markdown';
 interface ChatMessage {
-  sender: 'sent' | 'received';
+  role: 'user' | 'assistant';
   content: string;
 }
 
 @Component({
   selector: 'app-chat-with-data',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MarkdownModule],
   templateUrl: './chat-with-data.component.html',
   styleUrl: './chat-with-data.component.css'
 })
@@ -34,7 +34,7 @@ export class ChatWithDataComponent {
     private authService: MsalService,
     private msalBroadcastService: MsalBroadcastService,
     private aiChatService: AiChatService
- //   private AiChatService: AiChatService
+    //   private AiChatService: AiChatService
   ) { }
 
   // Subscribe to the msalSubject$ observable on the msalBroadcastService
@@ -49,22 +49,42 @@ export class ChatWithDataComponent {
         this.authService.instance.setActiveAccount(payload.account);
       });
 
-        // Initialize with some default messages.
+    // Initialize with some default messages.
     this.messages.push({
-      sender: 'sent',
-      content: 'Hello! How are you?'
+      role: 'assistant',
+      content: 'Hello! I am chat bot on your data?'
     });
-    this.messages.push({
-      sender: 'received',
-      content: "I'm good, thank you! How about you?"
-    });
+ 
 
   }
 
-  click(){
+  async click() {
     console.log("click");
-    this.aiChatService.getChatResponse([{ role: "user", content: "Hello" }]);
-    
-  }
 
+    //    this.aiChatService.getChatResponse();
+
+    var response = await this.aiChatService.getChatResponseStreaming([{ role: "user", content: this.userInput }]);
+
+    // handle the response 
+    let txtresponse = "";
+    for await (const chunk of response) {
+      for (const choice of chunk.choices) {
+        const newText = choice.delta.content;
+        if (!!newText) {
+          console.log('gathering response');
+          txtresponse += newText;
+          console.log(newText);
+        }
+      }
+    }
+    // Initialize with some default messages.
+    this.messages.push({
+      role: 'assistant',
+      content: txtresponse
+    });
+
+    //this.messages.push(msgResponse);
+
+    console.log(txtresponse);
+  }
 }

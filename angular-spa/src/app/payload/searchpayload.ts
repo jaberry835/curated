@@ -9,43 +9,43 @@ import {
   
   // Original payload
   const originalPayload: PayloadData = {
-    messages: [
+    "messages": [
       {
-        role: "user",
-        content: "tell me a joke"
+        "role": "user",
+        "content": "tell me about some news from the dataset provided"
       }
     ],
-    temperature: 0.7,
-    top_p: 0.95,
-    max_tokens: 800,
-    stop: null,
-    stream: false,
-    frequency_penalty: 0,
-    presence_penalty: 0,
-    data_sources: [
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "max_tokens": 800,
+    "stop": null,
+    "stream": true,
+    "frequency_penalty": 0,
+    "presence_penalty": 0,
+    "data_sources": [
       {
-        type: "azure_search",
-        parameters: {
-          endpoint: environment.azureSearchEndpoint,
-          index_name: environment.azureSearchIndexName,
-          strictness: 3,
-          top_n_documents: 5,
-          in_scope: true,
-          semantic_configuration: "default",
-          query_type: "vector_semantic_hybrid",
-          embedding_dependency: {
-            type: "deployment_name",
-            deployment_name: "text-embedding-ada-002"
+        "type": "azure_search",
+        "parameters": {
+          "endpoint": environment.azureSearchEndpoint,
+          "index_name": "runtestidx",
+          "strictness": 3,
+          "top_n_documents": 5,
+          "in_scope": false,
+          "semantic_configuration": "default",
+          "query_type": "vector_semantic_hybrid",
+          "embedding_dependency": {
+            "type": "deployment_name",
+            "deployment_name": "text-embedding-ada-002"
           },
-          fields_mapping: {},
-          authentication: {
-            type: "api_key",
-            key: environment.azureSearchKey
+          "fields_mapping": {},
+          "authentication": {
+            "type": "api_key",
+            "key": environment.azureSearchKey
           }
         }
       }
     ]
-  };
+  }
   
   // Define new messages and update parameters.
   const newMessages: Message[] = [

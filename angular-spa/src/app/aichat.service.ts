@@ -5,10 +5,50 @@ import "@azure/openai/types";
 import { retryWhen } from "rxjs";
 //import {  ChatCompletionCreateParamsStreaming } from "openai/resources/chat/completions";
 import { environment } from "../environments/environment";
+import { PayloadData, updatePayload, UpdatePayloadOptions } from "./payload/payload-helper";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
+}
+
+const originalPayload: PayloadData = {
+  "messages": [
+    {
+      "role": "user",
+      "content": "tell me about some news from the dataset provided"
+    }
+  ],
+  "temperature": 0.7,
+  "top_p": 0.95,
+  "max_tokens": 800,
+  "stop": null,
+  "stream": true,
+  "frequency_penalty": 0,
+  "presence_penalty": 0,
+  "data_sources": [
+    {
+      "type": "azure_search",
+      "parameters": {
+        "endpoint": environment.azureSearchEndpoint,
+        "index_name": "runtestidx",
+        "strictness": 3,
+        "top_n_documents": 5,
+        "in_scope": false,
+        "semantic_configuration": "default",
+        "query_type": "vector_semantic_hybrid",
+        "embedding_dependency": {
+          "type": "deployment_name",
+          "deployment_name": "text-embedding-ada-002"
+        },
+        "fields_mapping": {},
+        "authentication": {
+          "type": "api_key",
+          "key": environment.azureSearchKey
+        }
+      }
+    }
+  ]
 }
 
 @Injectable({
@@ -27,6 +67,10 @@ export class AiChatService {
   azureSearchEndpoint = environment.azureSearchEndpoint;
   azureSearchIndexName = environment.azureSearchIndexName;
   azureSearchKey = environment.azureSearchKey;
+
+
+
+
   constructor() {
     this.client = new AzureOpenAI({
       endpoint: this.endpoint,
@@ -43,49 +87,17 @@ export class AiChatService {
    */
   async getChatResponse(messages: ChatMessage[]) {
     try {
-      const params = {};
+      const options: UpdatePayloadOptions = {
+        messages: messages, 
+        top_n_documents: 10,
+        strictness: 3
+      };
+      let uPayload = updatePayload(originalPayload,options);
+      console.log(uPayload)
       // @ts-ignore
-      const response = await this.client.chat.completions.create({
-        "messages": [
-          {
-            "role": "user",
-            "content": "tell me about som news from the dataset provided"
-          }
-        ],
-        "temperature": 0.7,
-        "top_p": 0.95,
-        "max_tokens": 800,
-        "stop": null,
-        "stream": true,
-        "frequency_penalty": 0,
-        "presence_penalty": 0,
-        "data_sources": [
-          {
-            "type": "azure_search",
-            "parameters": {
-              "endpoint": environment.azureSearchEndpoint,
-              "index_name": "runtestidx",
-              "strictness": 3,
-              "top_n_documents": 5,
-              "in_scope": false,
-              "semantic_configuration": "default",
+      const response = await this.client.chat.completions.create(uPayload);
 
-              "query_type": "vector_semantic_hybrid",
-
-              "embedding_dependency": {
-                "type": "deployment_name",
-                "deployment_name": "text-embedding-ada-002"
-              },
-              "fields_mapping": {},
-              "authentication": {
-                "type": "api_key",
-                "key": environment.azureSearchKey
-              }
-            }
-          }
-        ]
-      });
-
+      
       let txtresponse = "";
       for await (const chunk of response) {
         for (const choice of chunk.choices) {
@@ -96,12 +108,35 @@ export class AiChatService {
           }
         }
       }
-      
+      console.log('response gathered');
+      //console.log(txtresponse)
       return txtresponse;
     }
     catch (err) {
       return 'failed'
     }
   }
+
+  async getChatResponseStreaming(messages: ChatMessage[]) : Promise<any> {
+    try {
+      const options: UpdatePayloadOptions = {
+        messages: messages, 
+        top_n_documents: 10,
+        strictness: 3
+      };
+      let uPayload = updatePayload(originalPayload,options);
+      console.log(uPayload)
+      // @ts-ignore
+      const response = await this.client.chat.completions.create(uPayload);
+
+      return response;
+   
+      
+    }
+    catch (err) {
+      return null;
+    }
+  }
+
 }
 
