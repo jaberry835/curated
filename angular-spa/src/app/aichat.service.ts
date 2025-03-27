@@ -21,7 +21,7 @@ const originalPayload: PayloadData = {
   ],
   "temperature": 0.7,
   "top_p": 0.95,
-  "max_tokens": 800,
+  "max_tokens": 2500,
   "stop": null,
   "stream": true,
   "frequency_penalty": 0,
@@ -88,16 +88,16 @@ export class AiChatService {
   async getChatResponse(messages: ChatMessage[]) {
     try {
       const options: UpdatePayloadOptions = {
-        messages: messages, 
+        messages: messages,
         top_n_documents: 10,
         strictness: 3
       };
-      let uPayload = updatePayload(originalPayload,options);
+      let uPayload = updatePayload(originalPayload, options);
       console.log(uPayload)
       // @ts-ignore
       const response = await this.client.chat.completions.create(uPayload);
 
-      
+
       let txtresponse = "";
       for await (const chunk of response) {
         for (const choice of chunk.choices) {
@@ -117,21 +117,21 @@ export class AiChatService {
     }
   }
 
-  async getChatResponseStreaming(messages: ChatMessage[]) : Promise<any> {
+  async getChatResponseStreaming(messages: ChatMessage[]): Promise<any> {
     try {
       const options: UpdatePayloadOptions = {
-        messages: messages, 
+        messages: messages,
         top_n_documents: 10,
         strictness: 3
       };
-      let uPayload = updatePayload(originalPayload,options);
+      let uPayload = updatePayload(originalPayload, options);
       console.log(uPayload)
       // @ts-ignore
       const response = await this.client.chat.completions.create(uPayload);
 
       return response;
-   
-      
+
+
     }
     catch (err) {
       return null;

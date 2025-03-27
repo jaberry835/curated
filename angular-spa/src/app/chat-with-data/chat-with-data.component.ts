@@ -54,17 +54,19 @@ export class ChatWithDataComponent {
       role: 'assistant',
       content: 'Hello! I am chat bot on your data?'
     });
- 
+
 
   }
 
   async click() {
     console.log("click");
-
-    //    this.aiChatService.getChatResponse();
-
+    this.messages.push({
+      role: 'user',
+      content: this.userInput
+    });
     var response = await this.aiChatService.getChatResponseStreaming([{ role: "user", content: this.userInput }]);
 
+    
     // handle the response 
     let txtresponse = "";
     for await (const chunk of response) {
