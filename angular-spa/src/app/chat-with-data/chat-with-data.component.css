@@ -35,4 +35,5 @@
   /* Prevent the textarea from being resized by the user (optional) */
   .fixed-chat-input textarea {
     resize: none;
+  
   }
