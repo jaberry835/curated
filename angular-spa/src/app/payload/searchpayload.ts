@@ -12,7 +12,7 @@ import {
     messages: [
       {
         role: "user",
-        content: "tell me about israel and gaza"
+        content: "tell me a joke"
       }
     ],
     temperature: 0.7,

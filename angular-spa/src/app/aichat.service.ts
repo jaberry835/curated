@@ -21,14 +21,12 @@ export class AiChatService {
   // Your deployment ID—often a model like "gpt-35-turbo"
   private deploymentId = "gpt-4o";
   // Replace with your resource's endpoint and key
-  endpoint = environment.aiEndpoint; //"https://jb-ai-test.openai.azure.com";
+  endpoint = environment.aiEndpoint;
   apiKey = environment.aiKey;
-  apiVersion = environment.apiVersion;// "2024-05-01-preview";
-  // Your Azure Cognitive Search endpoint, and index name
-  azureSearchEndpoint = environment.azureSearchEndpoint; //"https://jb-ai-test-search.search.windows.net";
-  azureSearchIndexName = environment.azureSearchIndexName; //"runtestidx"
+  apiVersion = environment.apiVersion;
+  azureSearchEndpoint = environment.azureSearchEndpoint;
+  azureSearchIndexName = environment.azureSearchIndexName;
   azureSearchKey = environment.azureSearchKey;
-  //https://jb-ai-test.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview
   constructor() {
     this.client = new AzureOpenAI({
       endpoint: this.endpoint,
@@ -48,44 +46,44 @@ export class AiChatService {
       const params = {};
       // @ts-ignore
       const response = await this.client.chat.completions.create({
-        model: "gpt-4o",
-        stream: true,
-        messages: [
+        "messages": [
           {
-            role: "user",
-            content: "Tell me something from the news from my data"
+            "role": "user",
+            "content": "tell me about som news from the dataset provided"
           }
         ],
-
-        max_tokens: 550,
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "max_tokens": 800,
+        "stop": null,
+        "stream": true,
+        "frequency_penalty": 0,
+        "presence_penalty": 0,
         "data_sources": [
-    {
-      "type": "azure_search",
-      "parameters": {
-        "endpoint": environment.azureSearchEndpoint,
-        "index_name": "runtestidx",
-        "semantic_configuration": "default",
-        "query_type": "vector_semantic_hybrid",
-        "fields_mapping": {},
-        "in_scope": true,
-        "role_information": "",
-        "filter": null,
-        "strictness": 3,
-        "top_n_documents": 11,
-        "authentication": {
-          "type": "api_key",
-          "key": ""
-        },
-        "embedding_dependency": {
-          "type": "gpt-4o",
-          "deployment_name": "text-embedding-ada-002"
-        },
-        "key": environment.azureSearchKey,
-        "indexName": environment.azureSearchIndexName
-      }
-    }
-  ],
+          {
+            "type": "azure_search",
+            "parameters": {
+              "endpoint": environment.azureSearchEndpoint,
+              "index_name": "runtestidx",
+              "strictness": 3,
+              "top_n_documents": 5,
+              "in_scope": false,
+              "semantic_configuration": "default",
 
+              "query_type": "vector_semantic_hybrid",
+
+              "embedding_dependency": {
+                "type": "deployment_name",
+                "deployment_name": "text-embedding-ada-002"
+              },
+              "fields_mapping": {},
+              "authentication": {
+                "type": "api_key",
+                "key": environment.azureSearchKey
+              }
+            }
+          }
+        ]
       });
 
       let txtresponse = "";
@@ -93,12 +91,12 @@ export class AiChatService {
         for (const choice of chunk.choices) {
           const newText = choice.delta.content;
           if (!!newText) {
-
+            console.log('gathering response');
             txtresponse += newText;
           }
         }
       }
-      console.log(txtresponse)
+      
       return txtresponse;
     }
     catch (err) {
@@ -106,42 +104,4 @@ export class AiChatService {
     }
   }
 }
-/*
-await this.client.chat.completions.create({
-  messsages: [
-    {
-      role: "user",
-      content: "tell me about the news in my data",
-    },
-  ],
-  max_tokens: 128,
-});*/
-//   await this.client.chat.completions.create(params);
-/*
-        body:{
-          messsages: [
-            {
-              role: "user",
-              content: "tell me about the news in my data",
-            },
-          ],
-          max_tokens: 128,
-          model: "gpt-4o",
-          data_sources: [
-            {
-              type: "azure_search",
-              parameters: {
-                endpoint: this.azureSearchEndpoint,
-                index_name: this.azureSearchIndexName,
-                authentication: {
-                  type: "system_assigned_managed_identity",
-                },
-              },
-            },
-          ],
-        });
-    } catch (err) {
-      console.error("Azure OpenAI error:", err);
-      return "Error: Unable to get response";
-    }*/
 
