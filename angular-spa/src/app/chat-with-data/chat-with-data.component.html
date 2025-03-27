@@ -7,7 +7,7 @@
           <div class="card-header">
             Chat
           </div>
-          <div class="card-body chat-container">
+          <div class="card-body chat-container" #chatContainer>
             <div *ngFor="let msg of messages" class="chat-message" [ngClass]="{'sent': msg.role === 'user', 'received': msg.role === 'assistant'}">
               <div class="message-content">
                 <markdown [data]="msg.content"></markdown> 
@@ -27,7 +27,7 @@
           <div class="input-group">
             <!-- Using a textarea with 3 rows for a larger (“double height”) input area -->
             <textarea class="form-control" placeholder="Type a message..." rows="3"
-            [(ngModel)]="userInput"></textarea>
+            [(ngModel)]="userInput" (keydown.enter)="onEnter()"></textarea>
             <button class="btn btn-primary" type="button" (click)="click()">Send</button>
           </div>
         </div>
