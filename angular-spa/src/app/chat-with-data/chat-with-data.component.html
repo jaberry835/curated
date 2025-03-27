@@ -8,9 +8,9 @@
             Chat
           </div>
           <div class="card-body chat-container">
-            <div *ngFor="let msg of messages" class="chat-message" [ngClass]="{'sent': msg.sender === 'sent', 'received': msg.sender === 'received'}">
+            <div *ngFor="let msg of messages" class="chat-message" [ngClass]="{'sent': msg.role === 'user', 'received': msg.role === 'assistant'}">
               <div class="message-content">
-                {{ msg.content }}
+                <markdown [data]="msg.content"></markdown> 
               </div>
             <!-- Add more chat messages here as needed -->
           </div>

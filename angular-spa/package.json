@@ -24,6 +24,8 @@
     "@azure/openai": "^2.0.0",
     "@microsoft/applicationinsights-web": "^3.3.6",
     "bootstrap": "^5.3.1",
+    "marked": "^15.0.7",
+    "ngx-markdown": "^19.1.1",
     "openai": "^4.62.1",
     "rxjs": "^7.4.0",
     "tslib": "^2.3.0",
