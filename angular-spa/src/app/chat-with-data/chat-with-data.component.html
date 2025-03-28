@@ -24,8 +24,10 @@
           Preview
         </div>
         <div class="card-body">
-          <!-- Add your preview content here -->
-          <p>Preview content goes here.</p>
+          <h3>
+            <a [href]="pFile.filepath" target="_blank" rel="noopener noreferrer">{{ pFile.title }}</a>
+          </h3>
+          <p>{{ pFile.preview }}</p>
         </div>
       </div>
     </div>

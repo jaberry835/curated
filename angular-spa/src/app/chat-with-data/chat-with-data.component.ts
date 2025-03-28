@@ -20,6 +20,12 @@ interface ChatMessage {
   content: string;
 }
 
+export interface PreviewFileType {
+  title: string;        // Title of the file
+  filepath: string;     // Filepath or URL to the file
+  preview: string;
+}
+
 @Component({
   selector: 'app-chat-with-data',
   standalone: true,
@@ -34,6 +40,9 @@ export class ChatWithDataComponent {
   chatCunks: any[] = [];
   userInput: string = '';
   @ViewChild('chatContainer') chatContainer!: ElementRef;
+
+  pFile: PreviewFileType = { title: '', filepath: '', preview: '' };
+  // @ts-ignore
 
   constructor(
     private authService: MsalService,
@@ -147,12 +156,12 @@ export class ChatWithDataComponent {
     console.log('Citation clicked:', docId, messageId);
 
     console.log(this.chatCunks.find(x => x.id == messageId));
-    let txt = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[docId].content;
+    let item = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[docId];
+    let txt =item.content;
+    this.pFile.preview = item.content;
+    this.pFile.filepath = item.filepath;
+    this.pFile.title = item.title;
 
-    // filepath 
-    //title
-    //url 
-    //
     console.log(txt);
     // Handle the citation click event here
   }
