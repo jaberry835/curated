@@ -90,15 +90,17 @@ export class AiChatService {
       const options: UpdatePayloadOptions = {
         messages: messages,
         top_n_documents: 10,
-        strictness: 3
+        strictness: 3, 
+        stream: false
       };
       let uPayload = updatePayload(originalPayload, options);
       console.log(uPayload)
       // @ts-ignore
       const response = await this.client.chat.completions.create(uPayload);
 
-
-      let txtresponse = "";
+      console.log(response);
+      return response;
+/*      let txtresponse = "";
       for await (const chunk of response) {
         for (const choice of chunk.choices) {
           const newText = choice.delta.content;
@@ -110,7 +112,7 @@ export class AiChatService {
       }
       console.log('response gathered');
       //console.log(txtresponse)
-      return txtresponse;
+      return txtresponse;*/
     }
     catch (err) {
       return 'failed'
@@ -122,7 +124,8 @@ export class AiChatService {
       const options: UpdatePayloadOptions = {
         messages: messages,
         top_n_documents: 10,
-        strictness: 3
+        strictness: 3, 
+        stream: true
       };
       let uPayload = updatePayload(originalPayload, options);
       console.log(uPayload)

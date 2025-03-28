@@ -56,7 +56,8 @@ import {
   const options: UpdatePayloadOptions = {
     messages: newMessages,
     top_n_documents: 3, // Change the top document count.
-    strictness: 2      // Change the strictness threshold.
+    strictness: 2,
+    stream: false      // Change the strictness threshold.
   };
   
   const updatedPayload = updatePayload(originalPayload, options);
