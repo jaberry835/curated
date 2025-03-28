@@ -51,6 +51,7 @@ export interface UpdatePayloadOptions {
   messages?: Message[];
   top_n_documents?: number;
   strictness?: number;
+  stream: boolean;
 }
 
 /**
@@ -75,6 +76,10 @@ export function updatePayload(
     updatedPayload.messages = options.messages;
   }
 
+  if (options.stream !== undefined) {
+    updatedPayload.stream = options.stream;
+  }
+
   // Update the parameters in each data source.
   updatedPayload.data_sources = updatedPayload.data_sources.map((ds) => {
     return {
@@ -90,6 +95,7 @@ export function updatePayload(
           options.strictness !== undefined
             ? options.strictness
             : ds.parameters.strictness
+       
       }
     };
   });

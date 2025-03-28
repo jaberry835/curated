@@ -18,6 +18,9 @@ import { MsalGuard, MsalInterceptor, MsalBroadcastService, MsalInterceptorConfig
 
 import { environment } from '../environments/environment';
 import { MarkdownModule } from 'ngx-markdown';
+
+import { UnicodeDecoderPipe } from './pipes/unicodeDecoder';
+
 const isIE = window.navigator.userAgent.indexOf('MSIE ') > -1 || window.navigator.userAgent.indexOf('Trident/') > -1;
 
 export function MSALInstanceFactory(): IPublicClientApplication {
@@ -63,7 +66,7 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
   declarations: [
     AppComponent,
     HomeComponent,
-    ProfileComponent, 
+    ProfileComponent,
   ],
   imports: [
     BrowserModule,
@@ -73,6 +76,7 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
     MarkdownModule.forRoot()
   ],
   providers: [
+   
     {
       provide: HTTP_INTERCEPTORS,
       useClass: MsalInterceptor,
