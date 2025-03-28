@@ -59,6 +59,9 @@ export class ChatWithDataComponent {
 
   }
 
+  ngAfterViewChecked(){
+    this.scrollToBottom();
+  }
 
   async click() {
     console.log("click");
@@ -92,6 +95,7 @@ export class ChatWithDataComponent {
     this.scrollToBottom();
    
   }
+
   onEnter(): void {
    
     this.click();
