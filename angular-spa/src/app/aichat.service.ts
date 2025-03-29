@@ -33,7 +33,7 @@ const originalPayload: PayloadData = {
       "type": "azure_search",
       "parameters": {
         "endpoint": environment.azureSearchEndpoint,
-        "index_name": "runtestidx",
+        "index_name": environment.azureSearchIndexName,
         "strictness": 3,
         "top_n_documents": 5,
         "in_scope": false,
