@@ -39,13 +39,52 @@
   <div class="container">
     <div class="row justify-content-left">
       <div class="col-md-10">
-        <div class="input-group">
-          <textarea class="form-control" placeholder="Type a message..." rows="3"
-                    [(ngModel)]="userInput" (keydown.enter)="onEnter()"></textarea>
-          <button class="btn btn-primary" type="button" (click)="click()"  [disabled]="isLoading">Send</button>
- 
+        <!-- Text and Send Button Group -->
+        <div class="input-group mb-3">
+          <textarea
+            class="form-control"
+            placeholder="Type a message..."
+            rows="3"
+            [(ngModel)]="userInput"
+            [disabled]="isLoading"
+            (keydown.enter)="click()"
+          ></textarea>
+          <button
+            class="btn btn-primary"
+            type="button"
+            (click)="click()"
+            [disabled]="isLoading"
+          >
+            Send
+          </button>
+           <!-- Reset and Settings Button Group -->
+         <!-- Reset and Settings Buttons -->
+         <div class="ms-3 d-flex gap-2">
+          <button
+            class="btn btn-warning"
+            type="button"
+            (click)="reset()"
+          >
+            Reset
+          </button>
+          <button
+          class="btn btn-success"
+          type="button"
+          (click)="exportChat()"
+        >
+          Export
+        </button>
+          <button
+            class="btn btn-secondary"
+            type="button"
+            (click)="openSettings()"
+          >
+            Settings
+          </button>
+        </div>
+
+       
         </div>
       </div>
     </div>
   </div>
-</div>

@@ -170,5 +170,23 @@ export class ChatWithDataComponent {
   subtractOne(input: string | number): string {
     return (Number(input) - 1).toString();
     
-  } // Function to sanitize the HTML content
+  } // Funct
+  // 
+  //   // Function for Reset Button
+  reset() {
+    this.userInput = ''; // Clear the textarea
+    console.log('Input has been reset');
+    this.messages = [];
+    this.pFile = { title: '', filepath: '', preview: '' };
+  }
+
+  // Function for Settings Button
+  openSettings() {
+    // Logic to open settings (e.g., navigate to settings page or display a modal)
+    console.log('Settings button clicked');
+  }
+
+  exportChat(){
+    console.log('Export button clicked');
+  }
 }

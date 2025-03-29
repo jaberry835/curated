@@ -55,15 +55,25 @@
   }
 
 
-  .fixed-chat-input .btn {
+  .fixed-chat-input button {
     font-size: 1rem;
     font-weight: bold;
   }
   
+  .fixed-chat-input .btn-warning {
+    background-color: #ffc107;
+    color: #000;
+  }
+  
   .fixed-chat-input .btn-warning:hover {
-    background-color: #ffcc00; /* Bright hover effect */
+    background-color: #e0a800;
+  }
+  
+  .fixed-chat-input .btn-secondary {
+    background-color: #6c757d;
   }
   
   .fixed-chat-input .btn-secondary:hover {
-    background-color: #6c757d; /* Darker hover effect */
+    background-color: #5a6268;
   }
+  
