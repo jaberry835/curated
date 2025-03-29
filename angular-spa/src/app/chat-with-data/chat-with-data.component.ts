@@ -99,12 +99,12 @@ export class ChatWithDataComponent {
     }).catch((err) => {
       this.isLoading = false;
       console.log(err);
-     
+
     }).finally(() => {
       this.isLoading = false;
       this.scrollToBottom();
     });
-  
+
   }
 
   buildCitationLink(text: string, id: string): string {
@@ -154,14 +154,14 @@ export class ChatWithDataComponent {
 
   showCitation(docId: string, messageId: string): void {
     console.log('Citation clicked:', docId, messageId);
-    if (this.chatCunks.length >0 ){
-    let item = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[this.subtractOne(docId)];
-    let txt = item.content;
-    this.pFile.preview = item.content;
-    this.pFile.filepath = item.filepath;
-    this.pFile.title = item.title;
+    if (this.chatCunks.length > 0) {
+      let item = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[this.subtractOne(docId)];
+      let txt = item.content;
+      this.pFile.preview = item.content;
+      this.pFile.filepath = item.filepath;
+      this.pFile.title = item.title;
 
-    console.log(txt);
+      console.log(txt);
 
     }
     // Handle the citation click event here
@@ -169,7 +169,7 @@ export class ChatWithDataComponent {
 
   subtractOne(input: string | number): string {
     return (Number(input) - 1).toString();
-    
+
   } // Funct
   // 
   //   // Function for Reset Button
@@ -186,7 +186,38 @@ export class ChatWithDataComponent {
     console.log('Settings button clicked');
   }
 
-  exportChat(){
+  exportChat() {
     console.log('Export button clicked');
+
+    // Format the conversation as a string for the export file
+    const chatContent = this.messages
+      .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`) // Format each message
+      .join('\n'); // Combine all messages into one string with line breaks
+
+    // Generate the current date and time
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-'); // Format as ISO string and replace invalid filename characters
+
+    // Create the filename with date and time
+    const filename = `chat_with_data_${timestamp}.txt`;
+
+    // Create a Blob object to hold the text file
+    const blob = new Blob([chatContent], { type: 'text/plain' });
+
+    // Generate a URL for the Blob
+    const url = window.URL.createObjectURL(blob);
+
+    // Create a temporary <a> element to trigger the download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename; // Dynamic filename with timestamp
+    link.click(); // Trigger the download
+
+    // Clean up the URL after download is triggered
+    window.URL.revokeObjectURL(url);
+
+    console.log('Chat exported successfully as', filename);
   }
+
+
 }
