@@ -54,3 +54,16 @@
     padding: 10px;      /* Optional: Add padding for better appearance */
   }
 
+
+  .fixed-chat-input .btn {
+    font-size: 1rem;
+    font-weight: bold;
+  }
+  
+  .fixed-chat-input .btn-warning:hover {
+    background-color: #ffcc00; /* Bright hover effect */
+  }
+  
+  .fixed-chat-input .btn-secondary:hover {
+    background-color: #6c757d; /* Darker hover effect */
+  }

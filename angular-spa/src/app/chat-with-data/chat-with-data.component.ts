@@ -154,7 +154,7 @@ export class ChatWithDataComponent {
 
   showCitation(docId: string, messageId: string): void {
     console.log('Citation clicked:', docId, messageId);
-
+    if (this.chatCunks.length >0 ){
     let item = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[this.subtractOne(docId)];
     let txt = item.content;
     this.pFile.preview = item.content;
@@ -163,7 +163,7 @@ export class ChatWithDataComponent {
 
     console.log(txt);
 
-    
+    }
     // Handle the citation click event here
   }
 
