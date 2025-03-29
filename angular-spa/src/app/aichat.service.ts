@@ -69,8 +69,6 @@ export class AiChatService {
   azureSearchKey = environment.azureSearchKey;
 
 
-
-
   constructor() {
     this.client = new AzureOpenAI({
       endpoint: this.endpoint,
