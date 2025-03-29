@@ -16,6 +16,10 @@ urlFragment: ms-identity-docs-javascript-angular-spa
 ---
 -->
 <!-- SAMPLE ID: DOCS-CODE-022 -->
+
+Sometimes to run this you need: 
+
+pm2 serve /home/site/wwwroot/ --no-daemon --spa
 # Angular | web | user sign-in, protected web API access (Microsoft Graph) | Microsoft identity platform
 
 <!-- Build badges here

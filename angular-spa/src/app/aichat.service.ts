@@ -6,6 +6,8 @@ import { retryWhen } from "rxjs";
 //import {  ChatCompletionCreateParamsStreaming } from "openai/resources/chat/completions";
 import { environment } from "../environments/environment";
 import { PayloadData, updatePayload, UpdatePayloadOptions } from "./payload/payload-helper";
+import { AppInsightsService } from "./app-insights-service";
+import { MsalService } from "@azure/msal-angular";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -69,7 +71,7 @@ export class AiChatService {
   azureSearchKey = environment.azureSearchKey;
 
 
-  constructor() {
+  constructor(private appInsightsService: AppInsightsService, private authService: MsalService) {
     this.client = new AzureOpenAI({
       endpoint: this.endpoint,
       apiKey: this.apiKey,
@@ -88,30 +90,34 @@ export class AiChatService {
       const options: UpdatePayloadOptions = {
         messages: messages,
         top_n_documents: 10,
-        strictness: 3, 
+        strictness: 3,
         stream: false
       };
+
+      const account = this.authService.instance.getAllAccounts()[0];
+      const name = account.username;
+      
+      this.appInsightsService.logCustomEvent("prompt", { prompt: messages[messages.length - 1].content, user: name });
       let uPayload = updatePayload(originalPayload, options);
       console.log(uPayload)
       // @ts-ignore
       const response = await this.client.chat.completions.create(uPayload);
-
-      
+      this.appInsightsService.logCustomEvent("response", { response: response.choices[0].message.content, user: name  });
       return response;
       // for the streaming response this code -- -but need to workout how to get the citations from stream 
-/*      let txtresponse = "";
-      for await (const chunk of response) {
-        for (const choice of chunk.choices) {
-          const newText = choice.delta.content;
-          if (!!newText) {
-            console.log('gathering response');
-            txtresponse += newText;
-          }
-        }
-      }
-      console.log('response gathered');
-      //console.log(txtresponse)
-      return txtresponse;*/
+      /*      let txtresponse = "";
+            for await (const chunk of response) {
+              for (const choice of chunk.choices) {
+                const newText = choice.delta.content;
+                if (!!newText) {
+                  console.log('gathering response');
+                  txtresponse += newText;
+                }
+              }
+            }
+            console.log('response gathered');
+            //console.log(txtresponse)
+            return txtresponse;*/
     }
     catch (err) {
       return 'failed'
@@ -123,7 +129,7 @@ export class AiChatService {
       const options: UpdatePayloadOptions = {
         messages: messages,
         top_n_documents: 10,
-        strictness: 3, 
+        strictness: 3,
         stream: true
       };
       let uPayload = updatePayload(originalPayload, options);
