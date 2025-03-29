@@ -7,7 +7,7 @@ from openai import AzureOpenAI
 
 endpoint = os.getenv("ENDPOINT_URL", "https://jb-ai-test.openai.azure.com/")  
 deployment = os.getenv("DEPLOYMENT_NAME", "gpt-4o")  
-subscription_key = os.getenv("AZURE_OPENAI_API_KEY", "1dcacde2391d4d7a8c697db313866674")  
+subscription_key = os.getenv("AZURE_OPENAI_API_KEY", "overwrite")  
 
 # Initialize Azure OpenAI Service client with key-based authentication    
 client = AzureOpenAI(  
