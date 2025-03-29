@@ -98,8 +98,9 @@ export class AiChatService {
       // @ts-ignore
       const response = await this.client.chat.completions.create(uPayload);
 
-      console.log(response);
+      
       return response;
+      // for the streaming response this code -- -but need to workout how to get the citations from stream 
 /*      let txtresponse = "";
       for await (const chunk of response) {
         for (const choice of chunk.choices) {
