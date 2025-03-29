@@ -47,3 +47,10 @@
   
   }
 
+  .preview-container {
+    max-height: calc(95vh - 200px); 
+    overflow-y: auto;  /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling if not needed */
+    padding: 10px;      /* Optional: Add padding for better appearance */
+  }
+

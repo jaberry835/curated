@@ -145,8 +145,6 @@ export class ChatWithDataComponent {
       const docidRef = parts[1]; // Example: '1'
       const messageidRef = parts[2]; // Example: 'b628eeaa-818c-434f-a553-9621e01cd022'
 
-      console.log('Parameter 1:', docidRef);
-      console.log('Parameter 2:', messageidRef);
       this.showCitation(docidRef, messageidRef); // Call the function with the extracted parameters
     }
 
@@ -154,9 +152,9 @@ export class ChatWithDataComponent {
 
   showCitation(docId: string, messageId: string): void {
     console.log('Citation clicked:', docId, messageId);
-
+ 
     console.log(this.chatCunks.find(x => x.id == messageId));
-    let item = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[docId];
+    let item = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[this.subtractOne(docId)];
     let txt =item.content;
     this.pFile.preview = item.content;
     this.pFile.filepath = item.filepath;
@@ -165,5 +163,8 @@ export class ChatWithDataComponent {
     console.log(txt);
     // Handle the citation click event here
   }
-  // Function to sanitize the HTML content
+ 
+  subtractOne(input: string | number): string {
+    return (Number(input) - 1).toString();
+  } // Function to sanitize the HTML content
 }
