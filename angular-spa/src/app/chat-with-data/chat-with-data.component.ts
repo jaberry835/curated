@@ -13,7 +13,6 @@ import { AiChatService } from '../aichat.service';
 import { FormsModule } from '@angular/forms';
 import { MarkdownModule } from 'ngx-markdown';
 import { UnicodeDecoderPipe } from '../pipes/unicodeDecoder';
-import { DomSanitizer } from '@angular/platform-browser';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -29,7 +28,7 @@ export interface PreviewFileType {
 @Component({
   selector: 'app-chat-with-data',
   standalone: true,
-  imports: [CommonModule, FormsModule, MarkdownModule, UnicodeDecoderPipe],
+  imports: [CommonModule, FormsModule, MarkdownModule],
   templateUrl: './chat-with-data.component.html',
   styleUrl: './chat-with-data.component.css'
 })
@@ -47,8 +46,7 @@ export class ChatWithDataComponent {
   constructor(
     private authService: MsalService,
     private msalBroadcastService: MsalBroadcastService,
-    private aiChatService: AiChatService,
-    private domSanitizer: DomSanitizer
+    private aiChatService: AiChatService
     //   private AiChatService: AiChatService
   ) {
 
