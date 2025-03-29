@@ -38,6 +38,7 @@ export class ChatWithDataComponent {
   messages: ChatMessage[] = [];
   chatCunks: any[] = [];
   userInput: string = '';
+  isLoading: boolean = false;
   @ViewChild('chatContainer') chatContainer!: ElementRef;
 
   pFile: PreviewFileType = { title: '', filepath: '', preview: '' };
@@ -82,24 +83,28 @@ export class ChatWithDataComponent {
       content: this.userInput
     });
 
-
-
-    await this.aiChatService.getChatResponse([{ role: "user", content: this.userInput }]).then((airesponse) => {
+    this.userInput == '';
+    this.isLoading = true;
+    await this.aiChatService.getChatResponse(this.messages).then((airesponse) => {
       this.userInput = '';
-      //console.log(txtresponse);
       this.chatCunks.push(airesponse);
       // @ts-ignore
-      let txt = this.buildCitationLink(airesponse.choices[0].message.content, airesponse.id)
-      console.log(txt);
+      let txt = this.buildCitationLink(airesponse.choices[0].message.content, airesponse.id);
       this.messages.push({
         role: 'assistant',
         // @ts-ignore
         content: txt
       });
+      this.isLoading = false;
     }).catch((err) => {
+      this.isLoading = false;
       console.log(err);
+     
+    }).finally(() => {
+      this.isLoading = false;
+      this.scrollToBottom();
     });
-    this.scrollToBottom();
+  
   }
 
   buildCitationLink(text: string, id: string): string {
@@ -134,7 +139,6 @@ export class ChatWithDataComponent {
   handleClick(event: Event): void {
     event.preventDefault();
     const target = event.target as HTMLElement;
-    console.log(target);
     const href = target.getAttribute('href');
     if (href) {
       // Extract parameters from the URL fragment
@@ -150,19 +154,21 @@ export class ChatWithDataComponent {
 
   showCitation(docId: string, messageId: string): void {
     console.log('Citation clicked:', docId, messageId);
- 
-    console.log(this.chatCunks.find(x => x.id == messageId));
+
     let item = this.chatCunks.find(x => x.id == messageId).choices[0].message.context.citations[this.subtractOne(docId)];
-    let txt =item.content;
+    let txt = item.content;
     this.pFile.preview = item.content;
     this.pFile.filepath = item.filepath;
     this.pFile.title = item.title;
 
     console.log(txt);
+
+    
     // Handle the citation click event here
   }
- 
+
   subtractOne(input: string | number): string {
     return (Number(input) - 1).toString();
+    
   } // Function to sanitize the HTML content
 }

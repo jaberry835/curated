@@ -9,15 +9,19 @@ import { AiChatService } from './aichat.service';
 // Required for RJXS
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-root',
-  templateUrl: './app.component.html'
+  templateUrl: './app.component.html', 
+  styleUrls: ['./app.component.css'],
 })
+
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'Angular 12 - MSAL Example';
+  title = environment.appName;
   loginDisplay = false;
   tokenExpiration: string = '';
+  userName: string = '';
   private readonly _destroying$ = new Subject<void>();
 
   constructor(
@@ -47,6 +51,10 @@ export class AppComponent implements OnInit, OnDestroy {
   // If the user is logged in, present the user with a "logged in" experience
   setLoginDisplay() {
     this.loginDisplay = this.authService.instance.getAllAccounts().length > 0;
+    if (this.loginDisplay) {
+      const account = this.authService.instance.getAllAccounts()[0];
+      this.userName = account?.name ? account.name.toString() : 'Unknown User'; // Fallback for undefined name
+    }
   }
 
   // Log the user in and redirect them if MSAL provides a redirect URI otherwise go to the default URI
