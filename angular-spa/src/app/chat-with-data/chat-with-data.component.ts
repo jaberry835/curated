@@ -186,6 +186,11 @@ export class ChatWithDataComponent {
     console.log('Settings button clicked');
   }
 
+  removeLinks(content: string): string {
+    // Regular expression to match <a> tags and their contents
+    return content.replace(/<a\b[^>]*>(.*?)<\/a>/gi, '$1'); // Retain only the text inside the <a> tag
+  }
+
   exportChat() {
     console.log('Export button clicked');
 
@@ -202,7 +207,8 @@ export class ChatWithDataComponent {
     const filename = `chat_with_data_${timestamp}.txt`;
 
     // Create a Blob object to hold the text file
-    const blob = new Blob([chatContent], { type: 'text/plain' });
+    const sancontent = this.removeLinks(chatContent);
+    const blob = new Blob([sancontent], { type: 'text/plain' });
 
     // Generate a URL for the Blob
     const url = window.URL.createObjectURL(blob);
@@ -218,6 +224,7 @@ export class ChatWithDataComponent {
 
     console.log('Chat exported successfully as', filename);
   }
+
 
 
 }
