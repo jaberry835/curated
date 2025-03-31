@@ -99,7 +99,6 @@ export class AiChatService {
       
       this.appInsightsService.logCustomEvent("prompt", { prompt: messages[messages.length - 1].content, user: name });
       let uPayload = updatePayload(originalPayload, options);
-      console.log(uPayload)
       // @ts-ignore
       const response = await this.client.chat.completions.create(uPayload);
       this.appInsightsService.logCustomEvent("response", { response: response.choices[0].message.content, user: name  });
