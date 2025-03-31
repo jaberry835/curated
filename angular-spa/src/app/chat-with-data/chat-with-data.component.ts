@@ -161,8 +161,6 @@ export class ChatWithDataComponent {
       this.pFile.filepath = item.filepath;
       this.pFile.title = item.title;
 
-      console.log(txt);
-
     }
     // Handle the citation click event here
   }
