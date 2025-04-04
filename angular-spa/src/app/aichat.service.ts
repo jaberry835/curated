@@ -103,20 +103,7 @@ export class AiChatService {
       const response = await this.client.chat.completions.create(uPayload);
       this.appInsightsService.logCustomEvent("response", { response: response.choices[0].message.content, user: name  });
       return response;
-      // for the streaming response this code -- -but need to workout how to get the citations from stream 
-      /*      let txtresponse = "";
-            for await (const chunk of response) {
-              for (const choice of chunk.choices) {
-                const newText = choice.delta.content;
-                if (!!newText) {
-                  console.log('gathering response');
-                  txtresponse += newText;
-                }
-              }
-            }
-            console.log('response gathered');
-            //console.log(txtresponse)
-            return txtresponse;*/
+     
     }
     catch (err) {
       return 'failed'
