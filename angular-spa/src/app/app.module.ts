@@ -64,16 +64,16 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
 // Create an NgModule that contains the routes and MSAL configurations
 @NgModule({
   declarations: [
-    AppComponent,
-    HomeComponent,
-    ProfileComponent,
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
     MsalModule,
-    MarkdownModule.forRoot()
+    MarkdownModule.forRoot(),
+    AppComponent,
+    HomeComponent,
+    ProfileComponent,
   ],
   providers: [
    
