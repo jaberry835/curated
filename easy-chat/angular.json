@@ -101,6 +101,13 @@
           },
           "defaultConfiguration": "dev"
         },
+        "serve-ssr": {
+          "builder": "@nguniversal/builders:ssr-dev-server",
+          "options": {
+            "browserTarget": "angular-standalone-sample:build",
+            "serverTarget": "angular-standalone-sample:server"
+          }
+        }
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {

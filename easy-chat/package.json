@@ -9,7 +9,10 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
-    "test:e2e": "jest"
+    "test:e2e": "jest",
+    "build:ssr": "ng build && ng run angular-standalone-sample:server:production",
+    "dev:ssr": "ng run angular-standalone-sample:serve-ssr",
+    "serve:ssr": "node dist/angular-standalone-sample/server/main.js"
   },
   "private": true,
   "dependencies": {
@@ -22,6 +25,7 @@
     "@angular/material": "^18.0.0",
     "@angular/platform-browser": "~19.1.0",
     "@angular/platform-browser-dynamic": "~19.1.0",
+    "@angular/platform-server": "^19.2.7",
     "@angular/router": "~19.1.0",
     "@azure/msal-angular": "^4.0.0",
     "@azure/msal-browser": "^4.0.0",
@@ -30,6 +34,8 @@
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@microsoft/applicationinsights-web": "^3.3.6",
+    "@nguniversal/builders": "^16.2.0",
+    "@nguniversal/express-engine": "^16.2.0",
     "angular-split": "^19.0.0",
     "bootstrap": "^5.3.5",
     "jszip": "^3.10.1",
