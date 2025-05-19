@@ -53,7 +53,7 @@ async def run_agent(agent_id, data: AgentInput):
 
     async def run_job():
         try:
-            result = await agents_registry[agent_id].run_task(data.input)
+            result = await agents_registry[agent_id].run_task(data.query)
             jobs[job_id]["result"] = result
             jobs[job_id]["status"] = "completed"
         except Exception as e:
