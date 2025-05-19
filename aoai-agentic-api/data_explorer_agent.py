@@ -19,7 +19,6 @@ AOAI_MODEL    = config('aoai_model', default="gpt-4o")  # Your deployment model 
 # Configure OpenAI SDK for Azure OpenAI
 openai.api_key = AOAI_API_KEY
 openai.api_base = AOAI_BASE_URL
-
 class DataExplorerAgent:
     def __init__(self, agent_name: str, kernel: Kernel):
         self.agent_name = agent_name
@@ -29,30 +28,36 @@ class DataExplorerAgent:
 
     def _configure_adx(self):
         # Here we create a connection string with your preferred authentication method.
-        # In this example, we use device authentication. You might prefer another method.
+        # In this example, we use device authentication.
+        print('creating connection string')
         kcsb = KustoConnectionStringBuilder.with_aad_device_authentication(ADX_CLUSTER)
+        print('initializing Kusto client')
         self.kusto_client = KustoClient(kcsb)
+        print('client initialized')
 
     async def retrieve_and_summarize(self, adx_query: str) -> str:
         """
         Query Azure Data Explorer using the provided query, then pass the JSON data
-        to AOAI (via Azure OpenAI) to summarize and optionally point out discrepancies.
+        to AOAI to summarize and highlight discrepancies.
         """
         loop = asyncio.get_event_loop()
 
-        # Run the ADX query in a separate thread (since Azure Kusto library is synchronous)
+        # Run the ADX query in a separate thread since the Kusto client is synchronous
+        print('executing ADX query')
         response = await loop.run_in_executor(None, self.kusto_client.execute, ADX_DATABASE, adx_query)
 
-        # Convert the query results to a JSON string
+        # Convert the results to JSON using pandas
         df = pd.DataFrame(response.primary_results[0])
         json_data = df.to_json(orient="records")
 
-        # Build the prompt dynamically depending on the number of records
-        prompt = ("Summarize the following JSON data returned from an Azure Data Explorer query. "
-                  "If there are multiple records, highlight any discrepancies or trends over time.\n\n" 
-                  f"{json_data}")
+        # Prepare the prompt for summarization
+        prompt = (
+            "Summarize the following JSON data retrieved from an ADX query. "
+            "If there are multiple records, highlight any discrepancies or trends over time:\n\n"
+            f"{json_data}"
+        )
 
-        # Use run_in_executor if you prefer non-blocking behavior (since openai.ChatCompletion.create is synchronous)
+        # Call AOAI synchronously within a run_in_executor
         ai_response = await loop.run_in_executor(
             None,
             lambda: openai.ChatCompletion.create(
@@ -66,3 +71,8 @@ class DataExplorerAgent:
 
         result = ai_response["choices"][0]["message"]["content"]
         return result
+
+    async def run_task(self, query: str) -> str:
+        # Alias run_task to retrieve_and_summarize to meet the generic interface used in your routes.
+        print ('running task')
+        return await self.retrieve_and_summarize(query)
