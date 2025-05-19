@@ -10,6 +10,10 @@ uvicorn==0.24.0
 aiohttp==3.9.2
 gunicorn==20.1.0
 pydantic-settings==2.2.1
-semantc-kernel==1.30.0
 swagger-ui-py==23.9.23
 asgiref==3.8.1
+python-decouple
+semantic-kernel
+quart-schema
+pandas
+azure-kusto

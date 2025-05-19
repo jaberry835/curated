@@ -6,6 +6,10 @@ from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_prompt_execution_settings import AzureChatPromptExecutionSettings
 from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
 
+from decouple import config
+
+api_key  = config('api_key')
+
 class SemanticAgent:
     def __init__(self, agent_name: str, kernel: Kernel):
         self.agent_name = agent_name
@@ -17,7 +21,7 @@ class SemanticAgent:
         # Register AI service; replace these parameters with your actual credentials.
         chat_completion = AzureChatCompletion(
             deployment_name="gpt-4o",
-            api_key="",
+            api_key=api_key,
             base_url="https://jb-ai-test.openai.azure.com/",
         )
         self.kernel.add_service(chat_completion)
