@@ -1,13 +1,3 @@
-node_modules
-.angular
-dist
-environment.ts
-environment.development.ts
-angular-spa/src/environments/environment.development.ts
-easy-chat/src/environments/environment.dev.ts
-easy-chat/src/environments/environment.prod.ts
-easy-chat/src/environments/environment.e2e.ts
-
 # Byte-compiled / optimized files
 __pycache__/
 *.py[cod]
