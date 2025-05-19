@@ -16,4 +16,4 @@ python-decouple
 semantic-kernel
 quart-schema
 pandas
-azure-kusto
+azure-kusto-data

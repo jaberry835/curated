@@ -3,7 +3,8 @@ from quart import Quart, render_template, request, jsonify
 import asyncio, uuid
 
 from semantic_kernel import Kernel
-from agent_wrapper import SemanticAgent  # Our custom agent wrapper
+# If you want to use SemanticAgent too, you can import it
+from agent_wrapper import SemanticAgent  
 from quart_schema import QuartSchema, validate_request, validate_response
 from swagger_ui import quart_api_doc
 
@@ -18,38 +19,41 @@ QuartSchema(app)  # Enables OpenAPI docs
 quart_api_doc(app, config_url="/openapi.json", url_prefix="/docs", title="API Documentation")
 
 def initialize_agents():
-    # Create a shared kernel (or create separate Kernel instances per agent if needed)
+    # Create separate kernel instances (or share one if that suits your design)
     kernel1 = Kernel()
     kernel2 = Kernel()
+    kernel3 = Kernel()
     
-    # Create custom agents with their own configurations
+    # Uncomment these if you want additional semantic agents
     # agents_registry['agent1'] = SemanticAgent("agent1", kernel1)
     # agents_registry['agent2'] = SemanticAgent("agent2", kernel2)
-    # Add further agents as desired
-        # Register the new Data Explorer agent
+    
+    # Register the new Data Explorer agent
     agents_registry['adx_agent'] = DataExplorerAgent("adx_agent", kernel3)
+
 initialize_agents()
 
 @app.route("/agents", methods=["GET"])
 async def list_agents():
     return jsonify({"agents": list(agents_registry.keys())})
 
+from pydantic import BaseModel
+
+class AgentInput(BaseModel):
+    query: str
+
 @app.route("/agents/<agent_id>/run", methods=["POST"])
-async def run_agent(agent_id):
+@validate_request(AgentInput)
+async def run_agent(agent_id, data: AgentInput):
     if agent_id not in agents_registry:
         return jsonify({"error": "Agent not found"}), 404
-    
-    data = await request.get_json()
-    agent_input = data.get("input", "")
-    if not agent_input:
-        return jsonify({"error": "Missing agent input"}), 400
 
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "running", "result": None}
 
     async def run_job():
         try:
-            result = await agents_registry[agent_id].run_task(agent_input)
+            result = await agents_registry[agent_id].run_task(data.input)
             jobs[job_id]["result"] = result
             jobs[job_id]["status"] = "completed"
         except Exception as e:
