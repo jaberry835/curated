@@ -18,6 +18,7 @@ class SemanticAgent:
         self._configure_services()
 
     def _configure_services(self):
+        
         # Register AI service; replace these parameters with your actual credentials.
         chat_completion = AzureChatCompletion(
             deployment_name="gpt-4o",

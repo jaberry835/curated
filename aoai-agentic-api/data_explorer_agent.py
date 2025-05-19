@@ -12,7 +12,9 @@ ADX_DATABASE = 'cti'
 AOAI_API_KEY = config('api_key')
 AOAI_BASE_URL = 'https://jb-ai-test.openai.azure.com/'     
 AOAI_MODEL = config('aoai_model', default="gpt-4o")
-
+CLIENT_ID = config('client_id')
+CLIENT_SECRET = config('client_secret')
+TENANT_ID = config('client_tenant_id')
 # Configure OpenAI SDK
 client = openai.OpenAI(api_key=AOAI_API_KEY, base_url=AOAI_BASE_URL)
 
@@ -25,7 +27,8 @@ class DataExplorerAgent:
 
     def _configure_adx(self):
         print('Creating connection string...')
-        kcsb = KustoConnectionStringBuilder.with_aad_device_authentication(ADX_CLUSTER)
+       
+        kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(ADX_CLUSTER, CLIENT_ID, CLIENT_SECRET, TENANT_ID)
         self.kusto_client = KustoClient(kcsb)
         print('Kusto client initialized.')
 
@@ -55,13 +58,15 @@ class DataExplorerAgent:
         print('passing to AOAI...')
         #print('Prompt:', prompt)
         # Call AOAI using latest SDK
+        print(f"Using OpenAI API Key: {AOAI_API_KEY[:5]}****")  # Safe obfuscation
+        print(f"Using AOAI Model: {AOAI_MODEL}")
         ai_response = await loop.run_in_executor(
             None,
             lambda: client.chat.completions.create(
                 model=AOAI_MODEL,
                 messages=[
                     {"role": "system", "content": "You are an assistant that summarizes data and detects discrepancies."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": 'test echo this'}
                 ]
             )
         )
