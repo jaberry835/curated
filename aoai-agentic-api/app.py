@@ -7,6 +7,8 @@ from agent_wrapper import SemanticAgent  # Our custom agent wrapper
 from quart_schema import QuartSchema, validate_request, validate_response
 from swagger_ui import quart_api_doc
 
+from data_explorer_agent import DataExplorerAgent  # New ADX agent
+
 app = Quart(__name__)
 agents_registry = {}
 jobs = {}
@@ -21,10 +23,11 @@ def initialize_agents():
     kernel2 = Kernel()
     
     # Create custom agents with their own configurations
-    agents_registry['agent1'] = SemanticAgent("agent1", kernel1)
-    agents_registry['agent2'] = SemanticAgent("agent2", kernel2)
+    # agents_registry['agent1'] = SemanticAgent("agent1", kernel1)
+    # agents_registry['agent2'] = SemanticAgent("agent2", kernel2)
     # Add further agents as desired
-
+        # Register the new Data Explorer agent
+    agents_registry['adx_agent'] = DataExplorerAgent("adx_agent", kernel3)
 initialize_agents()
 
 @app.route("/agents", methods=["GET"])

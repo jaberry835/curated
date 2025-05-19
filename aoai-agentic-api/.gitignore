@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 env/
 venv/
+new_venv/
 
 # Distribution / packaging
 build/
@@ -37,3 +38,5 @@ coverage.xml
 .vscode/
 .idea/
 .spyderproject/
+
+.env
