@@ -49,6 +49,20 @@ class DataExplorerAgent:
         print('extracting records')
         json_data = df.to_json(orient="records")
 
+        client = openai.OpenAI(api_key=AOAI_API_KEY, base_url="https://jb-ai-test.openai.azure.com/")
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an AI assistant."},
+                {"role": "user", "content": "Hello!"}
+            ],
+            timeout=10
+        )
+
+        print(response.choices[0].message.content)
+
+
         # Prepare prompt
         prompt = (
             "Summarize the following JSON data retrieved from an ADX query. "
