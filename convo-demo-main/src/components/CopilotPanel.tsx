@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Suggestion, Message } from '../types/conversation';
-import { getPatternAnalysisSuggestions, retrieveContext } from '../services/aiServiceRAG';
+import {
+  getPatternAnalysisSuggestions,
+  retrieveContext
+} from '../services';
 import SuggestionCard from './SuggestionCard';
 import './CopilotPanel.css';
 
@@ -8,6 +11,9 @@ interface CopilotPanelProps {
   buyerOptions: string[];
   selectedBuyer: string;
   setSelectedBuyer: React.Dispatch<React.SetStateAction<string>>;
+  languageOptions: string[];
+  selectedLanguage: string;
+  setSelectedLanguage: React.Dispatch<React.SetStateAction<string>>;
   productDesc: string;
   setProductDesc: React.Dispatch<React.SetStateAction<string>>;
   initiateConversation: () => Promise<void>;
@@ -20,12 +26,15 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({
   buyerOptions,
   selectedBuyer,
   setSelectedBuyer,
+  languageOptions,
+  selectedLanguage,
+  setSelectedLanguage,
   productDesc,
   setProductDesc,
   initiateConversation,
   started,
-  messages
-  , setDraftMessage
+  messages,
+  setDraftMessage
 }) => {
   // Pattern analysis suggestions and loading state
   const [patternSuggestions, setPatternSuggestions] = useState<Suggestion[]>([]);
@@ -117,9 +126,20 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({
                 {!detailLoading && !detailError && (
                   detailData.length > 0 ? (
                     <ul className="details-list">
-                      {detailData.map((ctx, idx) => (
-                        <li key={idx}><pre>{ctx}</pre></li>
-                      ))}
+                      {detailData.map((ctx, idx) => {
+                        let docObj: Record<string, any>;
+                        try { docObj = JSON.parse(ctx); } catch { docObj = { raw: ctx }; }
+                        return (
+                          <li key={idx} className="details-item">
+                            {Object.entries(docObj).map(([key, value]) => (
+                              <div key={key} className="details-field">
+                                <strong>{key}:</strong>{' '}
+                                <span className="details-value">{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                              </div>
+                            ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <p>No similar conversation snippets found for this suggestion.</p>
@@ -145,6 +165,13 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({
             onChange={e => setSelectedBuyer(e.target.value)}
           >
             {buyerOptions.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+          <select
+            aria-label="Select language"
+            value={selectedLanguage}
+            onChange={e => setSelectedLanguage(e.target.value)}
+          >
+            {languageOptions.map(lang => <option key={lang} value={lang}>{lang}</option>)}
           </select>
           <input
             type="text"
@@ -187,8 +214,6 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({
                   <SuggestionCard
                     key={suggestion.id}
                     suggestion={suggestion}
-                    onRefresh={handleRefreshPattern}
-                    isRefreshing={patternLoading}
                     onSelectAction={text => setDraftMessage(text)}
                     onGetDetails={() => handleGetDetails(suggestion)}
                   />

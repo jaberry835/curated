@@ -4,13 +4,11 @@ import './SuggestionCard.css';
 
 interface SuggestionCardProps {
   suggestion: Suggestion;
-  onRefresh?: () => void;
-  isRefreshing?: boolean;
   onSelectAction?: (text: string) => void; // Callback to prefill input
   onGetDetails?: () => void; // Callback to fetch and show more details
 }
 
-const SuggestionCard: React.FC<SuggestionCardProps> = ({ suggestion, onRefresh, isRefreshing = false, onSelectAction, onGetDetails }) => {
+const SuggestionCard: React.FC<SuggestionCardProps> = ({ suggestion, onSelectAction, onGetDetails }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getTypeIcon = (type: string) => {
@@ -38,21 +36,9 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({ suggestion, onRefresh, 
           <h3>{suggestion.title}</h3>
         </div>
         <div className="suggestion-controls">
-          {/* Rank badge */}
-          <div className="rank-badge">#{suggestion.rank}</div>
           <div className={`confidence-badge ${getConfidenceLevel(suggestion.confidence)}`}>
             {Math.round(suggestion.confidence * 100)}% confidence
           </div>
-          {onRefresh && (
-            <button
-              className="refresh-link"
-              onClick={(e) => { e.stopPropagation(); onRefresh(); }}
-              disabled={isRefreshing}
-              title={isRefreshing ? 'Refreshing...' : 'Refresh this suggestion'}
-            >
-              {isRefreshing ? '⏳' : '🔄'}
-            </button>
-          )}
           <button className={`expand-btn ${isExpanded ? 'expanded' : ''}`}>
             {isExpanded ? '▲' : '▼'}
           </button>
@@ -94,8 +80,6 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({ suggestion, onRefresh, 
 
           <div className="suggestion-footer">
             <div className="suggestion-actions">
-              <button className="action-btn primary">Apply Suggestion</button>
-              <button className="action-btn secondary">Save for Later</button>
               <button
                 className="action-btn tertiary"
                 onClick={(e) => { e.stopPropagation(); onGetDetails && onGetDetails(); }}

@@ -33,13 +33,13 @@ const openaiClient = new OpenAI({
  */
 export async function retrieveContext(query: string, topK: number = 5): Promise<string[]> {
   // Use Azure Cognitive Search REST API to POST a search query
-  const url = `${searchEndpoint.replace(/\/+$/, '')}/indexes/${encodeURIComponent(searchIndexName)}/docs/search?api-version=2024-07-01`;
+  // Format: /indexes('indexName')/docs/search
+  const url = `${searchEndpoint.replace(/\/+$/, '')}/indexes('${searchIndexName}')/docs/search?api-version=2024-07-01`;
   // Prevent empty search expressions, use '*' to match all if query is blank
   const searchText = query.trim() === '' ? '*' : query;
   const payload = {
     search: searchText,
-    top: topK,
-    select: ['content', 'message', 'role', 'negotiation_stage']
+    top: topK
   };
   console.debug('retrieveContext - POST', url);
   console.debug('retrieveContext - payload', JSON.stringify(payload, null, 2));
@@ -58,13 +58,17 @@ export async function retrieveContext(query: string, topK: number = 5): Promise<
       throw new Error(`Search request failed: ${response.status} ${response.statusText}`);
     }
     const data = JSON.parse(text) as { value: Array<Record<string, any>> };
-    // Format each result into a JSON string for AI consumption
-    return data.value.map(doc => JSON.stringify({
-      content: doc.content || doc.message || '',
-      role: doc.role || '',
-      stage: doc.negotiation_stage || '',
-      score: doc['@search.score'] || 0
-    }));
+    // Return each document as JSON, excluding large vector fields
+    return data.value.map(doc => {
+      // Create a shallow copy and remove unwanted fields
+      const filtered: Record<string, any> = { ...doc };
+      delete filtered['text_vector'];
+      delete filtered['chunk_id'];
+      delete filtered['parent_id'];
+      // Include the search score under a consistent key
+      filtered.score = doc['@search.score'] || 0;
+      return JSON.stringify(filtered);
+    });
   } catch (error) {
     console.error('Error retrieving context from Azure Search:', error);
     return [];
@@ -72,6 +76,7 @@ export async function retrieveContext(query: string, topK: number = 5): Promise<
 }
 
 export async function getSellerResponse(
+  seller: string,
   buyer: string,
   product: string,
   buyerMessage: string,
@@ -80,16 +85,19 @@ export async function getSellerResponse(
   try {
     // First, retrieve relevant context from Azure Search
     const contexts = await retrieveContext(buyerMessage);
+    // Limit to top 3 contexts and truncate each to 1000 chars to reduce token usage
+    const limitedContexts = contexts.slice(0, 3).map(c => c.length > 1000 ? c.slice(0, 1000) : c);
     
-    // Construct chat messages including history for context
+    // Construct chat messages including trimmed context and recent history
+    // Only include the last 10 messages from history
+    const recentHistory = conversationHistory.slice(-10);
     const messages = [
       { role: "system" as const,
-        content: `You are SilverHawk, a seller of premium ${product}. Reply in a friendly, conversational style to ${buyer}. Use the grounding info to answer questions casually and clearly. Keep it concise. Whenever mentioning price, quote all amounts in cryptocurrency (e.g., BTC). If the buyer indicates they have sent BTC to your wallet, acknowledge receipt and proceed to finalize the sale.
-+
-+Info from past chats:
-+${contexts.length > 0 ? contexts.join('\n\n') : 'No past chat data.'}` },
+        content: `You are ${seller}, a seller of premium ${product}. Reply in a friendly, conversational style to ${buyer}. Use the grounding info to answer questions casually and clearly. Keep it concise. Whenever mentioning price, quote all amounts in cryptocurrency (e.g., BTC). If the buyer indicates they have sent BTC to your wallet, acknowledge receipt and proceed to finalize the sale.
+Info from past chats (trimmed):
+${limitedContexts.length > 0 ? limitedContexts.join('\n\n') : 'No past chat data.'}` },
       // Include prior conversation messages
-      ...conversationHistory.map(h => ({
+      ...recentHistory.map(h => ({
         role: h.role === 'Buyer' ? 'user' : 'assistant',
         content: h.message
       })),
@@ -118,16 +126,19 @@ export async function getSellerResponse(
 /**
  * Alternative fallback function that generates responses without RAG if search fails
  */
-export async function getSellerResponseSimple(buyerMessage: string): Promise<string> {
+export async function getSellerResponseSimple(
+  seller: string,
+  buyerMessage: string
+): Promise<string> {
   try {
     // Simplified fallback uses only the latest buyer message
     const messages = [
-      { 
-        role: "system" as const, 
-        content: `You are SilverHawk, a professional seller of premium Moonlight Serum. Maintain a professional yet personable tone. Whenever mentioning price, quote all amounts in cryptocurrency (e.g., BTC). If the buyer indicates they have sent BTC to your wallet, acknowledge receipt and finalize the sale.`,
-      },
-      { role: "user" as const, content: buyerMessage }
-    ];
+       { 
+         role: "system" as const, 
+        content: `You are ${seller}, a professional seller of premium Moonlight Serum. Maintain a professional yet personable tone. Whenever mentioning price, quote all amounts in cryptocurrency (e.g., BTC). If the buyer indicates they have sent BTC to your wallet, acknowledge receipt and finalize the sale.`,
+       },
+       { role: "user" as const, content: buyerMessage }
+     ];
 
     const result = await openaiClient.chat.completions.create({
        model: openaiDeployment,
@@ -186,23 +197,24 @@ export async function getPatternAnalysisSuggestions(
     // Retrieve relevant context from Azure Search using last user message
     const lastMessage = conversation.length > 0 ? conversation[conversation.length - 1].message : '';
     const contexts = await retrieveContext(lastMessage);
+    // Limit to top 3 contexts and truncate each to 1000 chars
+    const limitedContexts = contexts.slice(0, 3).map(c => c.length > 1000 ? c.slice(0, 1000) : c);
 
     // Build chat messages for pattern analysis
     const messagesPayload: any[] = [
       {
         role: 'system',
         content: `You are a buyer-focused AI assistant helping the buyer secure the best possible deal and ensure they receive exactly what they expect. ` +
-          `Analyze negotiation patterns from the conversation and similar past examples, and provide 3 creative, actionable suggestions tailored to the buyer’s interests. ` +
-          `Output a JSON array where each item includes the following fields: ` +
-          `id (unique string), type ('pattern_analysis'), title, content, confidence (0.0 to 1.0), rank (1 = highest priority), next_response_area (the next logical area the buyer should address), and action_items (array of prompt suggestions the buyer can copy to continue the conversation).` +
+          `Analyze negotiation patterns from the conversation and similar past examples, and provide 3 concise suggestions tailored to the buyer’s interests. ` +
+          `Output JSON with id, type, title, content, confidence (0.0–1.0), rank (1 highest), next_response_area, and action_items array.` +
           `
-Contexts:
-${contexts.join('\n\n')}`
+Contexts (trimmed):
+${limitedContexts.join('\n\n')}`
       },
       {
         role: 'user',
-        content: `Conversation History:
-${conversation.map(m => `${m.role}: ${m.message}`).join('\n')}`
+        content: `Conversation History (last 10):
++${conversation.slice(-10).map(m => `${m.role}: ${m.message}`).join('\n')}`
       }
     ];
 
@@ -213,8 +225,19 @@ ${conversation.map(m => `${m.role}: ${m.message}`).join('\n')}`
       temperature: 0.7,
       max_tokens: 800
     });
-    const text = result.choices[0].message?.content || '[]';
-    
+    // Get raw LLM output and sanitize markdown fences
+    let raw = result.choices[0].message?.content || '[]';
+    let text = raw.trim();
+    // If wrapped in markdown fences (e.g., ```json ... ```), strip them
+    if (text.startsWith('```')) {
+      const lines = text.split('\n');
+      // Remove opening fence
+      if (lines[0].startsWith('```')) lines.shift();
+      // Remove closing fence if present
+      if (lines[lines.length - 1].startsWith('```')) lines.pop();
+      text = lines.join('\n').trim();
+    }
+
     let suggestions: Suggestion[];
     try {
       suggestions = JSON.parse(text);
@@ -254,5 +277,33 @@ export async function getSuggestionDetails(
   } catch (error) {
     console.error('Error retrieving suggestion details:', error);
     return [];
+  }
+}
+
+/**
+ * Translate given text to the target language using GPT-4o.
+ */
+export async function translateText(
+  text: string,
+  targetLang: string
+): Promise<string> {
+  try {
+    const messages = [
+      { role: 'system' as const,
+        content: `You are a translation assistant. Translate the following text into ${targetLang}, preserving meaning and format. Only output the translated text without additional commentary.`
+      },
+      { role: 'user' as const, content: text }
+    ];
+    // @ts-ignore
+    const result = await openaiClient.chat.completions.create({
+      model: openaiDeployment,
+      messages: messages as any,
+      temperature: 0,
+      max_tokens: 1000,
+    });
+    return result.choices[0].message?.content?.trim() || text;
+  } catch (err) {
+    console.error('Translation error:', err);
+    return text;
   }
 }
