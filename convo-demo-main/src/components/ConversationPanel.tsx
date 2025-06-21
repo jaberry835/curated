@@ -11,9 +11,10 @@ interface ConversationPanelProps {
   started: boolean;
   draftMessage: string;              // Current draft message from Copilot selection or user input
   setDraftMessage: React.Dispatch<React.SetStateAction<string>>;
+  sellerHandle: string;               // dynamic seller name passed from App
 }
 
-const ConversationPanel: React.FC<ConversationPanelProps> = ({ messages, isBotTyping, onSendMessage, started, draftMessage, setDraftMessage }) => {
+const ConversationPanel: React.FC<ConversationPanelProps> = ({ messages, isBotTyping, onSendMessage, started, draftMessage, setDraftMessage, sellerHandle }) => {
   // Ref for messages container to enable auto-scrolling
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +39,7 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({ messages, isBotTy
       )}
 
       <div className="messages-container" ref={containerRef}>
-        {isBotTyping && <div className="bot-typing-indicator">SilverHawk is typing...</div>}
+        {isBotTyping && <div className="bot-typing-indicator">{sellerHandle} is typing...</div>}
         {messages.map((m, i) => <MessageComponent key={i} message={m} />)}
       </div>
 

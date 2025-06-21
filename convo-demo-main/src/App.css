@@ -10,11 +10,29 @@
   padding: 10px;
   color: white;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .App-header h1 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.reset-btn {
+  background-color: #e06c75;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.reset-btn:hover {
+  background-color: #c95b68;
 }
 
 .App-content {

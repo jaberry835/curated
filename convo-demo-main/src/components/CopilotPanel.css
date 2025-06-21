@@ -267,7 +267,7 @@
   max-width: 600px;
   width: 90%;
   max-height: 80%;
-  overflow-y: auto;
+  overflow-y: auto;  /* ensures content scrolls */
   border-radius: 8px;
   padding: 20px;
   position: relative;
@@ -284,16 +284,30 @@
 .details-list {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
-.details-list li {
-  margin-bottom: 16px;
-  background: #f8f9fa;
+.details-item {
   padding: 12px;
-  border-radius: 4px;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 8px;
+}
+.details-content {
+  margin: 0;
+  color: #333;
+  line-height: 1.4;
+}
+.details-score {
+  margin: 4px 0 0 0;
   font-size: 0.85rem;
-  white-space: pre-wrap;
+  color: #666;
 }
 .error-msg {
   color: #dc3545;
   font-weight: 600;
+}
+
+/* Allow long text fields to wrap */
+.details-value {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
