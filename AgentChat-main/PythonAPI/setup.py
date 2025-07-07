@@ -100,9 +100,9 @@ def main():
     print("   mcp dev mcp_server_standalone.py")
     
     print("\nAPI will be available at:")
-    print("   - Flask API: http://localhost:5000")
+    print("   - Flask API: http://localhost:5007")
     print("   - MCP Server: http://localhost:3001/mcp")
-    print("   - Health Check: http://localhost:5000/health")
+    print("   - Health Check: http://localhost:5007/health")
 
 
 if __name__ == "__main__":
