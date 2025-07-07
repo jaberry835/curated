@@ -17,5 +17,5 @@ app = create_app()
 # The startup command will be: gunicorn --bind 0.0.0.0:8000 wsgi:app
 if __name__ == "__main__":
     # For local development, run with standard Flask
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5007))
     app.run(host='0.0.0.0', port=port, debug=False)

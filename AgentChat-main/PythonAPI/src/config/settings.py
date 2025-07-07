@@ -26,7 +26,7 @@ class APISettings(BaseSettings):
     """Flask API specific settings."""
     
     host: str = Field(default="localhost", env="API_HOST")
-    port: int = Field(default=5000, env="API_PORT")
+    port: int = Field(default=5007, env="API_PORT")
     debug: bool = Field(default=True, env="FLASK_DEBUG")
     
     class Config:
