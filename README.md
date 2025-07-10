@@ -10,3 +10,5 @@ Updated 3.25, spa demos
 Updated 3.29, fin docs, spa demo improve
 
 Updated 7.8, so many demos
+
+Updated 7.10 , added 3:12 pm stuff
