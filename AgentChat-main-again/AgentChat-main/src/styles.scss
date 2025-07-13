@@ -1,5 +1,13 @@
 /* Angular Material Theme */
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
+@import '../public/material-icons/css/material-icons.css';   // <-- fixed path
+
+
+/* Material Icons */
+.material-icons {
+  font-family: 'Material Icons';
+  /* ...existing rules... */
+}
 
 /* Material Icons */
 .material-icons {
