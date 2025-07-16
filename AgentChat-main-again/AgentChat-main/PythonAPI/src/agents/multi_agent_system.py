@@ -263,6 +263,9 @@ class MultiAgentSystem:
             'DocumentAgent': self.document_agent,
             'FictionalCompaniesAgent': self.fictional_companies_agent
         }
+        
+        # Agent registry with metadata for dynamic discovery and selection
+        self.agent_registry = {}  # Will be populated after agents are created
         logger.info("✅ All agents stored for dynamic re-routing capabilities")
     
     async def initialize(self) -> bool:
@@ -725,7 +728,128 @@ Remember: You provide fictional company information and network device details f
             service=coordinator_service,
             kernel=coordinator_kernel,
             name="CoordinatorAgent",
-            instructions="""You are the CoordinatorAgent with ABSOLUTE AUTHORITY over conversation completion in this multi-agent system.
+            instructions="PLACEHOLDER - Will be updated dynamically after registry is built",
+            function_choice_behavior=FunctionChoiceBehavior.Auto(auto_invoke=False)
+        )
+        logger.info("✅ Coordinator Agent created successfully")
+        
+        # Build the agent registry with metadata for dynamic discovery
+        self._build_agent_registry()
+        
+        # Update coordinator instructions with dynamic agent information
+        self._update_coordinator_instructions()
+    
+    def _build_agent_registry(self):
+        """Build the agent registry with metadata for dynamic agent selection and discovery."""
+        logger.info("📋 Building dynamic agent registry...")
+        
+        self.agent_registry = {
+            'CoordinatorAgent': {
+                'agent': self.coordinator_agent,
+                'description': 'General knowledge, orchestration, system information, and response synthesis',
+                'keywords': ['general', 'what', 'how', 'explain', 'agents', 'system', 'available', 'help', 'guide'],
+                'examples': [
+                    'What is Python?',
+                    'What agents are available?', 
+                    'How does this system work?',
+                    'Tell me about artificial intelligence'
+                ]
+            },
+            'MathAgent': {
+                'agent': self.math_agent,
+                'description': 'Mathematical calculations, statistics, and numerical analysis',
+                'keywords': ['math', 'calculate', 'factorial', 'statistics', 'add', 'subtract', 'multiply', 'divide', 'average', 'sum'],
+                'examples': [
+                    'Calculate 5 factorial',
+                    'What is 25 + 37?',
+                    'Find the average of these numbers'
+                ]
+            },
+            'UtilityAgent': {
+                'agent': self.utility_agent,
+                'description': 'Hash generation, timestamps, system utilities, and formatting',
+                'keywords': ['hash', 'timestamp', 'utility', 'format', 'sha256', 'md5', 'health', 'json'],
+                'examples': [
+                    'Generate a SHA256 hash',
+                    'What is the current timestamp?',
+                    'Check system health'
+                ]
+            },
+            'ADXAgent': {
+                'agent': self.adx_agent,
+                'description': 'Azure Data Explorer queries, database operations, and data retrieval',
+                'keywords': ['adx', 'database', 'query', 'data', 'table', 'schema', 'kusto', 'kql', 'list', 'search'],
+                'examples': [
+                    'List ADX databases',
+                    'Query the scans table',
+                    'Show me database schemas'
+                ]
+            },
+            'DocumentAgent': {
+                'agent': self.document_agent,
+                'description': 'Document management, file storage, search, and retrieval operations',
+                'keywords': ['document', 'file', 'search', 'storage', 'upload', 'download', 'list', 'content'],
+                'examples': [
+                    'List my documents',
+                    'Search documents about AI',
+                    'Get document content summary'
+                ]
+            },
+            'FictionalCompaniesAgent': {
+                'agent': self.fictional_companies_agent,
+                'description': 'Fictional company information, IP address lookups, and device information',
+                'keywords': ['company', 'ip', 'device', 'fictional', 'business', 'lookup', 'network'],
+                'examples': [
+                    'What company owns IP 192.168.1.1?',
+                    'Get device information for Acme Corp',
+                    'Lookup company details'
+                ]
+            }
+        }
+        
+        # Update the all_agents mapping with the actual agent objects
+        self.all_agents = {name: info['agent'] for name, info in self.agent_registry.items()}
+        
+        logger.info(f"✅ Agent registry built with {len(self.agent_registry)} agents")
+        for name, info in self.agent_registry.items():
+            logger.info(f"   📋 {name}: {info['description']}")
+    
+    def _update_coordinator_instructions(self):
+        """Update the coordinator agent's instructions with dynamic agent information."""
+        logger.info("🔄 Updating CoordinatorAgent instructions with dynamic agent information...")
+        
+        # Update the coordinator agent's instructions
+        self.coordinator_agent._instructions = self._generate_coordinator_instructions()
+        logger.info("✅ CoordinatorAgent instructions updated with current agent registry")
+    
+    def get_available_agents_info(self) -> str:
+        """Get a formatted string of available agents and their capabilities - useful for testing."""
+        if not self.agent_registry:
+            return "Agent registry not yet initialized."
+        
+        info_lines = [f"This multi-agent system includes {len(self.agent_registry)} specialized agents:"]
+        for name, info in self.agent_registry.items():
+            if name == 'CoordinatorAgent':
+                info_lines.append(f"• **{name}** (orchestration) - {info['description']}")
+            else:
+                info_lines.append(f"• **{name}** - {info['description']}")
+        
+        info_lines.append("\nEach agent has specialized tools to help answer questions in their domain.")
+        return "\n".join(info_lines)
+    
+    
+    def _generate_coordinator_instructions(self) -> str:
+        """Generate dynamic coordinator instructions based on the current agent registry."""
+        
+        # Generate system information from registry
+        agent_descriptions = []
+        for name, info in self.agent_registry.items():
+            if name != 'CoordinatorAgent':  # Don't describe self
+                agent_descriptions.append(f"**{name}** for {info['description'].lower()}")
+        
+        agents_info = ", ".join(agent_descriptions)
+        
+        return f"""You are the CoordinatorAgent with ABSOLUTE AUTHORITY over conversation completion in this multi-agent system.
 
 🎯 CRITICAL RESPONSIBILITY: You are the ONLY agent who decides when a conversation is complete. No conversation ends without your explicit final answer.
 
@@ -746,6 +870,16 @@ WHEN TO RESPOND:
    - "What is artificial intelligence?"
    - "Tell me about the history of computers"  
    - "How does machine learning work?"
+
+✅ **System/Meta Questions**: Answer questions about this multi-agent system itself
+   - "What agents are available?"
+   - "What can each agent do?"
+   - "How does this system work?"
+   - "What tools are available?"
+   - "Who should I ask about math/database/document questions?"
+
+   For "What agents are available?" specifically, respond with:
+   "This multi-agent system includes {len(self.agent_registry)} specialized agents: **CoordinatorAgent** (me) for orchestration and general knowledge, {agents_info}. Each agent has specialized tools to help answer questions in their domain."
 
 ✅ **Coordination & Synthesis**: Always provide final synthesis after specialists respond
    - After ADXAgent provides data, YOU interpret and present it to the user
@@ -793,27 +927,26 @@ For "Find documents about AI and tell me what they contain":
 ❌ Wrong: Just let DocumentAgent search
 ✅ Correct: After DocumentAgent searches, YOU provide: "I found several documents about AI in your system. Here's a comprehensive summary of their contents: [synthesized overview with key insights]"
 
-🎯 REMEMBER: You have the final word on every conversation. The user should always receive their complete answer from YOU, not from individual specialists.""",
-            function_choice_behavior=FunctionChoiceBehavior.Auto(auto_invoke=False)
-        )
-        logger.info("✅ Coordinator Agent created successfully")
+🎯 REMEMBER: You have the final word on every conversation. The user should always receive their complete answer from YOU, not from individual specialists."""
     
     def _create_group_chat(self):
         """Create the group chat for agent coordination with AgentGroupChat."""
         logger.info("💬 Creating AgentGroupChat with agents:")
-        logger.info("   🎯 CoordinatorAgent - Intelligent orchestration, context provision, and response synthesis")
-        logger.info("   🧮 MathAgent - Mathematical calculations and statistics")
-        logger.info("   🔧 UtilityAgent - System utilities and helper functions")
-        logger.info("   🔍 ADXAgent - Azure Data Explorer queries and data analysis")
-        logger.info("   📄 DocumentAgent - Document management and storage operations")
-        logger.info("   🏢 FictionalCompaniesAgent - Fictional company information and IP lookups")
+        
+        # Log agents dynamically from registry
+        for name, info in self.agent_registry.items():
+            emoji = "🎯" if name == "CoordinatorAgent" else "🧮" if name == "MathAgent" else "🔧" if name == "UtilityAgent" else "🔍" if name == "ADXAgent" else "📄" if name == "DocumentAgent" else "🏢"
+            logger.info(f"   {emoji} {name} - {info['description']}")
         
         # Create the group chat with enhanced LLM-based termination strategy
         termination_strategy = LLMTerminationStrategy()
         termination_strategy.set_coordinator_agent(self.coordinator_agent)
         
+        # Get all agents from registry in a predictable order
+        all_agents = [info['agent'] for info in self.agent_registry.values()]
+        
         self.group_chat = AgentGroupChat(
-            agents=[self.coordinator_agent, self.math_agent, self.utility_agent, self.adx_agent, self.document_agent, self.fictional_companies_agent],
+            agents=all_agents,
             termination_strategy=termination_strategy
         )
         logger.info("✅ AgentGroupChat created with Enhanced LLMTerminationStrategy")
@@ -822,16 +955,22 @@ For "Find documents about AI and tell me what they contain":
     async def _select_agents_for_question(self, question: str) -> List[ChatCompletionAgent]:
         """Use the CoordinatorAgent's LLM to select which agents should participate in the conversation and in what order."""
         
+        # Generate the agent list dynamically from the registry
+        agent_list = []
+        examples = []
+        
+        for i, (name, info) in enumerate(self.agent_registry.items(), 1):
+            agent_list.append(f"{i}. {name} - {info['description']}")
+            # Add some examples for this agent
+            for example in info['examples'][:2]:  # Limit to 2 examples per agent
+                examples.append(f'- For "{example}" → ["CoordinatorAgent"' + 
+                              (f', "{name}"]' if name != 'CoordinatorAgent' else ']'))
+        
         # Create a prompt for agent selection
         selection_prompt = f"""You are an intelligent agent router. Based on the user's question, determine which specialized agents should participate in the conversation and in what order.
 
 AVAILABLE AGENTS:
-1. CoordinatorAgent - General knowledge, provides context, coordinates other agents
-2. MathAgent - Mathematical calculations, statistics, numerical analysis
-3. UtilityAgent - Hash generation, timestamps, system utilities, formatting
-4. ADXAgent - Azure Data Explorer queries, database operations, data retrieval
-5. DocumentAgent - Document management, file storage, search, and retrieval operations
-6. FictionalCompaniesAgent - Fictional company information, IP address lookups, device information
+{chr(10).join(agent_list)}
 
 USER QUESTION:
 {question}
@@ -846,15 +985,7 @@ RESPOND WITH A JSON ARRAY of agent names in the order they should participate.
 ONLY include agent names that are necessary for this specific question.
 
 Examples:
-- For "What is Python?" → ["CoordinatorAgent"] 
-- For "Calculate 5 factorial" → ["CoordinatorAgent", "MathAgent"]
-- For "List ADX databases" → ["CoordinatorAgent", "ADXAgent"]
-- For "List my documents" → ["CoordinatorAgent", "DocumentAgent"]
-- For "Search documents about AI" → ["CoordinatorAgent", "DocumentAgent"] 
-- For "Get ADX table count and calculate its factorial" → ["CoordinatorAgent", "ADXAgent", "MathAgent"]
-- For "Generate hash of current timestamp" → ["CoordinatorAgent", "UtilityAgent"]
-- For "What company is associated with IP 192.168.1.1?" → ["CoordinatorAgent", "FictionalCompaniesAgent"]
-- For "Get device information for Acme Corp" → ["CoordinatorAgent", "FictionalCompaniesAgent"]
+{chr(10).join(examples)}
 
 Your response (JSON array only):"""
 
@@ -896,20 +1027,11 @@ Your response (JSON array only):"""
                     selected_agent_names = json.loads(json_match.group())
                     logger.info(f"📋 Selected agents: {selected_agent_names}")
                     
-                    # Map agent names to actual agent objects
-                    agent_mapping = {
-                        "CoordinatorAgent": self.coordinator_agent,
-                        "MathAgent": self.math_agent,
-                        "UtilityAgent": self.utility_agent,
-                        "ADXAgent": self.adx_agent,
-                        "DocumentAgent": self.document_agent,
-                        "FictionalCompaniesAgent": self.fictional_companies_agent
-                    }
-                    
+                    # Map agent names to actual agent objects using the registry
                     selected_agents = []
                     for agent_name in selected_agent_names:
-                        if agent_name in agent_mapping:
-                            selected_agents.append(agent_mapping[agent_name])
+                        if agent_name in self.agent_registry:
+                            selected_agents.append(self.agent_registry[agent_name]['agent'])
                             logger.info(f"   ✅ Added {agent_name}")
                         else:
                             logger.warning(f"   ❓ Unknown agent name: {agent_name}")
@@ -928,37 +1050,29 @@ Your response (JSON array only):"""
                 except json.JSONDecodeError as e:
                     logger.warning(f"❓ Failed to parse JSON from LLM response: {e}")
             
-            # Fallback parsing - look for agent names in text
+            # Fallback parsing - use registry keywords to match agents
             fallback_agents = [self.coordinator_agent]  # Always include coordinator
+            response_lower = response_content.lower()
             
-            if any(keyword in response_content.lower() for keyword in ['math', 'calculate', 'factorial', 'statistics']):
-                if self.math_agent not in fallback_agents:
-                    fallback_agents.append(self.math_agent)
+            for agent_name, info in self.agent_registry.items():
+                if agent_name == 'CoordinatorAgent':
+                    continue  # Already included
                     
-            if any(keyword in response_content.lower() for keyword in ['utility', 'hash', 'timestamp', 'format']):
-                if self.utility_agent not in fallback_agents:
-                    fallback_agents.append(self.utility_agent)
-                    
-            if any(keyword in response_content.lower() for keyword in ['adx', 'database', 'query', 'data']):
-                if self.adx_agent not in fallback_agents:
-                    fallback_agents.append(self.adx_agent)
-                    
-            if any(keyword in response_content.lower() for keyword in ['document', 'file', 'search', 'storage']):
-                if self.document_agent not in fallback_agents:
-                    fallback_agents.append(self.document_agent)
-                    
-            if any(keyword in response_content.lower() for keyword in ['company', 'ip', 'device', 'fictional', 'business']):
-                if self.fictional_companies_agent not in fallback_agents:
-                    fallback_agents.append(self.fictional_companies_agent)
+                # Check if any of this agent's keywords appear in the response
+                if any(keyword in response_lower for keyword in info['keywords']):
+                    agent = info['agent']
+                    if agent not in fallback_agents:
+                        fallback_agents.append(agent)
+                        logger.info(f"   ✅ Added {agent_name} based on keyword match")
             
             logger.info(f"🔄 Fallback agent selection: {[agent.name for agent in fallback_agents]}")
             return fallback_agents
             
         except Exception as e:
             logger.error(f"❌ Error in agent selection: {str(e)}")
-            # Ultimate fallback - use all agents
+            # Ultimate fallback - use all agents from registry
             logger.info("🆘 Using all agents as ultimate fallback")
-            return [self.coordinator_agent, self.math_agent, self.utility_agent, self.adx_agent, self.document_agent, self.fictional_companies_agent]
+            return list(self.all_agents.values())
     
     async def process_question(self, question: str, session_id: str = None, user_id: str = None, adx_token: str = None) -> str:
         """Process a user question through the AgentGroupChat system.
@@ -991,39 +1105,46 @@ Your response (JSON array only):"""
             
             # OPTIMIZATION: If only CoordinatorAgent is selected, handle as direct general knowledge question
             if len(selected_agents) == 1 and selected_agents[0].name == "CoordinatorAgent":
-                logger.info("🚀 FAST PATH: Only CoordinatorAgent selected - handling as direct general knowledge question")
-                logger.info("⚡ Skipping group chat creation for faster response")
+                logger.info("🚀 FAST PATH: Only CoordinatorAgent selected - handling as direct question")
+                logger.info("⚡ Using CoordinatorAgent kernel directly for system questions")
                 
-                # Ask the coordinator directly for general knowledge questions
+                # Use the coordinator's kernel service directly instead of agent.invoke() 
                 try:
                     from semantic_kernel.contents import ChatHistory
                     from semantic_kernel.connectors.ai.open_ai import OpenAIChatPromptExecutionSettings
                     
-                    # Create a simple chat history with the user's question
+                    # Create a chat history with system instructions and the user's question
                     chat_history = ChatHistory()
+                    
+                    # Add the coordinator's instructions as system message
+                    chat_history.add_system_message(self.coordinator_agent._instructions)
                     chat_history.add_user_message(question)
                     
-                    # Get completion from coordinator's service
+                    logger.info("🧠 Getting response from CoordinatorAgent kernel with full instructions...")
+                    
+                    # Get the completion service from the coordinator agent's kernel
                     completion_service = self.coordinator_agent.kernel.get_service()
+                    
+                    # Create execution settings for focused response
                     settings = OpenAIChatPromptExecutionSettings(
-                        max_tokens=1000,
-                        temperature=0.7  # Slightly more creative for general knowledge
+                        max_tokens=1000, 
+                        temperature=0.3
                     )
                     
-                    logger.info("🧠 Getting direct response from CoordinatorAgent...")
+                    # Get response using the service directly with instructions preserved
                     response = await completion_service.get_chat_message_content(
                         chat_history=chat_history,
                         settings=settings
                     )
                     
-                    final_response = str(response.content).strip()
+                    final_response = str(response.content).strip() if response and response.content else ""
                     
-                    if final_response and len(final_response) > 20:
+                    if final_response and len(final_response) > 50:
                         logger.info(f"✅ FAST PATH SUCCESS: Generated {len(final_response)} characters")
                         logger.info("📊 COMPLETION SUMMARY:")
                         logger.info(f"    📝 Final response length: {len(final_response)} characters")
-                        logger.info(f"    🧠 Coordinator response: YES (direct)")
-                        logger.info(f"    🎯 Specialist responses: 0 (general knowledge)")
+                        logger.info(f"    🧠 Coordinator response: YES (with full instructions)")
+                        logger.info(f"    🎯 Specialist responses: 0 (direct answer)")
                         logger.info(f"    🎭 Total conversation turns: 1 (optimized)")
                         logger.info("============================================================")
                         return final_response
