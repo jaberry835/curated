@@ -1449,11 +1449,19 @@ Remember: You provide fictional company information and network device details f
             async def search_rag_dataset(query: str) -> str:
                 """Search the RAG dataset and return results."""
                 try:
-                    result = await rag_agent.process_query(query)
-                    if result.get("success", False):
-                        return result.get("response", "No response generated")
-                    else:
-                        return f"Search failed: {result.get('error', 'Unknown error')}"
+                    # Call through MCP client to ensure SSE events are emitted
+                    tool_name = f"search_{dataset_name}_dataset"
+                    arguments = {
+                        "query": query,
+                        "max_results": 5
+                    }
+                    
+                    # Use the MCP client to call the RAG tool, which will emit proper SSE events
+                    result = await self.mcp_client.call_tool(tool_name, arguments)
+                    
+                    # The MCP client returns a JSON string, so we can return it directly
+                    return result
+                    
                 except Exception as e:
                     return f"Error searching {dataset_name} dataset: {str(e)}"
             
