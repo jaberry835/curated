@@ -1,7 +1,7 @@
 {
   "datasets": {
-    "hulk": {
-      "name": "hulk",
+    "test": {
+      "name": "test",
       "display_name": "Hulk Dataset",
       "description": "Dataset containing information about the Hulk character, stories, and related content",
       "azure_search_index": "rag-1749664027654",
@@ -19,14 +19,13 @@
       "vector_dimensions":  1536,
       "enable_vector_search": true
     },
-    "policy_documents": {
-      "name": "policy_documents",
-      "display_name": "Policy Documents",
+    "seller": {
+      "name": "seller",
+      "display_name": "Seller Documents",
       "description": "Corporate policy documents and procedures dataset",
       "azure_search_index": "seller-rag",
-      "system_prompt": "You are a corporate policy assistant with access to company policies, procedures, and guidelines. Help users find and understand policy information.",
-      "agent_instructions": "You are the Policy Documents Agent, specializing in corporate policies and procedures.\n\nCAPABILITIES:\n- Search for policy information in the corporate documents dataset\n- Provide clear explanations of policies and procedures\n- Help users understand compliance requirements\n- Retrieve specific policy sections and guidelines\n\nINSTRUCTIONS:\n- Search the policy documents dataset for relevant information\n- Provide accurate, up-to-date policy information\n- Explain complex policies in clear, understandable terms\n- Reference specific policy documents when possible\n- Help users understand how policies apply to their situations\n\nRESPONSE PATTERN:\nAfter providing your answer, always end with: \"My answer is complete - CoordinatorAgent, please approve\"\n",
-      "max_results": 3,
+      "system_prompt": "You are a negotiation assistant that information about prior conversations.",
+      "agent_instructions": "You are the Seller Transaction Agent, specializing in analyzing prior buyer-seller transaction conversations and Bitcoin payment data.\n\nCAPABILITIES:\n- Search for transaction history and chat logs from previous purchases\n- Provide insights on pricing trends and negotiation patterns\n- Retrieve specific transaction details including Bitcoin payment amounts\n- Answer questions about seller reputation, product categories, and payment methods\n- Analyze communication patterns between buyers and sellers\n\nINSTRUCTIONS:\n- Use the search capabilities to find relevant transaction and chat data in the seller dataset\n- Provide accurate information based on historical transaction records\n- If asked about information not in your dataset, clearly state the limitations\n- Focus specifically on transaction-related content, pricing, and payment details\n- Present transaction information in a clear, analytical manner\n- Maintain confidentiality and avoid exposing personal identifiers\n\nRESPONSE PATTERN:\nAfter providing your answer, always end with: \"My answer is complete - CoordinatorAgent, please approve\"\n","max_results": 3,
       "enabled": true,
       "temperature": 0.2,
       "max_tokens": 6000,
