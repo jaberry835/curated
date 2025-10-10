@@ -6,6 +6,47 @@ This script ensures the server runs with HTTP/SSE transport using gunicorn
 
 import os
 import sys
+
+# CRITICAL FIX: Remove Azure's /agents/python from PYTHONPATH and sys.path
+# to prevent typing_extensions conflict. This must happen BEFORE any other imports.
+
+# First, remove /agents/python from sys.path completely
+original_path = sys.path.copy()
+sys.path = [p for p in sys.path if '/agents/python' not in p]
+print(f"STARTUP: Removed /agents/python from sys.path", flush=True)
+print(f"STARTUP: New sys.path: {sys.path}", flush=True)
+
+# Remove any already-imported typing_extensions module that might be from the wrong location
+if 'typing_extensions' in sys.modules:
+    old_location = getattr(sys.modules['typing_extensions'], '__file__', 'unknown')
+    if '/agents/python' in str(old_location):
+        print(f"STARTUP: Removing cached typing_extensions from {old_location}", flush=True)
+        del sys.modules['typing_extensions']
+
+# Clean PYTHONPATH environment variable
+if 'PYTHONPATH' in os.environ:
+    original_pythonpath = os.environ['PYTHONPATH']
+    new_pythonpath = ':'.join([p for p in original_pythonpath.split(':') if '/agents/python' not in p])
+    os.environ['PYTHONPATH'] = new_pythonpath
+    print(f"STARTUP: Cleaned PYTHONPATH", flush=True)
+
+# Now import typing_extensions from the correct location (virtual environment)
+try:
+    import typing_extensions
+    print(f"STARTUP: Successfully loaded typing_extensions from {typing_extensions.__file__}", flush=True)
+    
+    # Verify Sentinel is available
+    if hasattr(typing_extensions, 'Sentinel'):
+        print(f"STARTUP: Verified typing_extensions.Sentinel is available", flush=True)
+    else:
+        # The module doesn't have Sentinel - this is the old version
+        print(f"STARTUP ERROR: typing_extensions from {typing_extensions.__file__} does not have Sentinel", flush=True)
+        print(f"STARTUP ERROR: typing_extensions version: {getattr(typing_extensions, '__version__', 'unknown')}", flush=True)
+        raise ImportError(f"typing_extensions from {typing_extensions.__file__} is too old (missing Sentinel)")
+except Exception as e:
+    print(f"STARTUP ERROR: Failed to load typing_extensions: {e}", flush=True)
+    raise
+
 import logging
 import subprocess
 
