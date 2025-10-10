@@ -2,8 +2,9 @@
 mcp[cli]
 fastmcp>=2.11.3
 
-# Dependency resolution - pin typer for compatibility with together package
-typer>=0.9,<0.16
+# Dependency resolution - ensure compatible typing_extensions for pydantic
+typing_extensions>=4.6.0
+typer>=0.9
 
 # Environment variables
 python-dotenv>=1.0.0
