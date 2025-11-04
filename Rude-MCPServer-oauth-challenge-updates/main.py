@@ -258,7 +258,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         skip_auth_paths = [
             "/health", 
             "/.well-known/",
-            "/debug/"
+            "/debug/",
+            "/api/tools"  # Allow unauthenticated access to tools list
         ]
         
         logger.info(f"🔐 Checking skip paths for {request.url.path}")
@@ -386,8 +387,8 @@ logger.info("✅ FastMCP server initialized (OAuth handled via middleware)")
 
 # Register all tools
 logger.info("📋 Registering tools...")
-register_math_tools(mcp)
-logger.info("✅ Math tools registered")
+#register_math_tools(mcp)
+#logger.info("✅ Math tools registered")
 register_adx_tools(mcp)
 logger.info("✅ ADX tools registered")
 register_fictional_api_tools(mcp)
@@ -430,7 +431,7 @@ def get_health_status() -> Dict[str, Any]:
             "server_name": "Rude MCP Server",
             "version": "1.0.0",
             "features": {
-                "math_tools": True,
+                #"math_tools": True,
                 "azure_data_explorer": kusto_status,
                 "fictional_api": fictional_api_status,
                 "document_service": document_service_status,
@@ -627,6 +628,73 @@ async def oauth_redirect_handler(request):
     
     return RedirectResponse(url=localhost_redirect)
 
+@app.route("/api/tools")
+async def list_tools_endpoint(request):
+    """List all available MCP tools with count (requires authentication)"""
+    from starlette.responses import JSONResponse
+    
+    try:
+        # Get tools from the MCP server
+        tools = await mcp.get_tools()
+        
+        tool_list = []
+        for tool in tools:
+            try:
+                # Handle different tool object types
+                tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', str(tool))
+                tool_desc = getattr(tool, 'description', 'No description available') if hasattr(tool, 'description') else 'No description available'
+                
+                # Get the tool to extract input schema
+                retrieved_tool = await mcp.get_tool(tool_name)
+                
+                tool_list.append({
+                    "name": tool_name,
+                    "description": tool_desc,
+                    "input_schema": getattr(retrieved_tool, 'inputSchema', None) if retrieved_tool else None
+                })
+            except Exception as e:
+                logger.warning(f"Failed to get details for tool: {e}")
+                tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', str(tool))
+                tool_list.append({
+                    "name": tool_name,
+                    "description": "Error retrieving tool details",
+                    "error": str(e)
+                })
+        
+        # Organize tools by category
+        tools_by_category = {
+            "math": [t for t in tool_list if any(x in t["name"] for x in ["add", "subtract", "multiply", "divide", "power", "square_root", "statistics", "factorial"])],
+            "adx": [t for t in tool_list if t["name"].startswith("kusto_")],
+            "fictional_api": [t for t in tool_list if any(x in t["name"] for x in ["company", "device", "fictional"])],
+            "document": [t for t in tool_list if any(x in t["name"] for x in ["document", "search"])],
+            "rag": [t for t in tool_list if t["name"].startswith("rag_")],
+            "system": [t for t in tool_list if t["name"] in ["health_check"]]
+        }
+        
+        return JSONResponse({
+            "total_count": len(tool_list),
+            "tools": tool_list,
+            "tools_by_category": {
+                category: {
+                    "count": len(tools),
+                    "tools": [t["name"] for t in tools]
+                }
+                for category, tools in tools_by_category.items() if tools
+            },
+            "server_name": mcp.name,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to list tools: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return JSONResponse({
+            "error": "Failed to retrieve tools",
+            "details": str(e),
+            "timestamp": datetime.now().isoformat()
+        }, status_code=500)
+
 @app.route("/debug/tools")
 async def debug_tools_endpoint(request):
     """Debug endpoint to test tool registration and access"""
@@ -688,10 +756,12 @@ async def root(request):
         "description": "Modular FastMCP server with Math Tools, Azure Data Explorer, Fictional API, and Document Service integration",
         "endpoints": {
             "mcp": "/mcp/",
-            "health": "/health"
+            "health": "/health",
+            "tools_list": "/api/tools",
+            "debug_tools": "/debug/tools"
         },
         "tools": {
-            "math_tools": ["add", "subtract", "multiply", "divide", "power", "square_root", "calculate_statistics", "factorial"],
+            #"math_tools": ["add", "subtract", "multiply", "divide", "power", "square_root", "calculate_statistics", "factorial"],
             "adx_tools": ["kusto_list_databases", "kusto_list_tables", "kusto_describe_table", "kusto_query", "kusto_get_cluster_info"],
             "fictional_api_tools": ["get_ip_company_info", "get_company_devices", "get_company_summary", "fictional_api_health_check"],
                 "document_tools": ["list_documents", "get_document", "search_documents", "get_document_content_summary"],
@@ -715,7 +785,8 @@ if __name__ == "__main__":
                 "server_name": "Rude MCP Server",
                 "version": os.getenv("MCP_SERVER_VERSION", "1.0.0"),
                 "environment": os.getenv("ENVIRONMENT", "production"),
-                "features": "math_tools,adx_tools,fictional_api_tools,document_tools"
+                #"features": "math_tools,adx_tools,fictional_api_tools,document_tools"
+                "features": "adx_tools,fictional_api_tools,document_tools"
             })
         else:
             logger.info("📊 Application Insights: DISABLED - Add APPLICATIONINSIGHTS_CONNECTION_STRING to enable")

@@ -19,6 +19,7 @@ import { OpenAIService } from '../services/openai.service';
 import { DocumentService } from '../services/document.service';
 import { AuthService } from '../services/auth.service';
 import { AgentActivityComponent } from './agent-activity.component';
+import { McpToolsDialogComponent } from './mcp-tools-dialog.component';
 import { environment } from '../../environments/environment';
 import { ChatMessage } from '../models/chat.models';
 import { v4 as uuidv4 } from 'uuid';
@@ -54,7 +55,7 @@ import { v4 as uuidv4 } from 'uuid';
             <!-- MCP Status -->
             <div class="mcp-status">
               @if (chatService.mcpEnabled()) {
-                <mat-chip color="primary">
+                <mat-chip color="primary" (click)="openMcpToolsDialog()" class="clickable-chip">
                   <mat-icon>extension</mat-icon>
                   MCP Tools ({{ chatService.availableTools().length }})
                 </mat-chip>
@@ -205,7 +206,33 @@ import { v4 as uuidv4 } from 'uuid';
                 </div>
               </div>
             }
-          </div>          <!-- Input Area -->
+          </div>          
+          <!-- Research Controls (shown when research is active) -->
+          @if (chatService.agentActivityService.isResearchActive()) {
+            <div class="research-controls">
+              <div class="research-status">
+                <mat-icon>science</mat-icon>
+                <span>{{ pausingResearch() ? 'Pause requested, generating summary...' : 'Deep research in progress...' }}</span>
+              </div>
+              <div class="control-buttons">
+                <button 
+                  mat-raised-button 
+                  color="warn"
+                  (click)="pauseAndSummarize()"
+                  [disabled]="pausingResearch()"
+                  matTooltip="Stop research and generate progress summary">
+                  @if (pausingResearch()) {
+                    <mat-spinner diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+                  } @else {
+                    <mat-icon>pause</mat-icon>
+                  }
+                  {{ pausingResearch() ? 'Generating Summary...' : 'Pause & Summarize' }}
+                </button>
+              </div>
+            </div>
+          }
+          
+          <!-- Input Area -->
           <div class="input-container">
             <div class="message-input-wrapper">
               <mat-form-field class="message-input" appearance="outline">
@@ -270,6 +297,10 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   cdr = inject(ChangeDetectorRef);  dialog = inject(MatDialog);  messageText = '';
   uploadedDocuments = signal<any[]>([]);
   mapImageCache = new Map<string, string>(); // Cache for blob URLs
+  
+  // Research control signals
+  isResearchActive = signal<boolean>(false);
+  showResearchControls = signal<boolean>(false);
 
   private shouldAutoScroll = true; // Track if we should auto-scroll
   private lastMessageCount = 0; // Track message count for auto-scroll logic
@@ -311,6 +342,9 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       // For new sessions, start with empty documents
       this.uploadedDocuments.set([]);
       this.messageText = '';
+      // Reset research control states for new session
+      this.pausingResearch.set(false);
+      this.showResearchControls.set(false);
     } catch (error) {
       console.error('Error creating new chat:', error);
     }
@@ -319,6 +353,9 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       await this.chatService.loadSession(sessionId);
       // Load documents for this session
       await this.loadSessionDocuments(sessionId);
+      // Reset research control states when switching sessions
+      this.pausingResearch.set(false);
+      this.showResearchControls.set(false);
       // Reset auto-scroll for new session and scroll to bottom
       this.shouldAutoScroll = true;
       this.lastMessageCount = 0;
@@ -440,6 +477,44 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       console.error('❌ Error triggering SSE test:', error);
     }
   }
+
+  pausingResearch = signal<boolean>(false);
+
+  async pauseAndSummarize() {
+    const sessionId = this.chatService.currentSession()?.id;
+    if (!sessionId) return;
+
+    this.pausingResearch.set(true);
+
+    try {
+      const response = await this.http.post<{success: boolean}>(`${environment.api.baseUrl}/research/pause`, {
+        sessionId
+      }).toPromise();
+
+      if (response?.success) {
+        console.log('✅ Research pause requested - waiting for summary generation');
+        // Don't hide controls or clear loading state - wait for the actual summary message to arrive
+        // The summary will be displayed as a regular chat message
+      }
+    } catch (error) {
+      console.error('Error pausing research:', error);
+      alert('Failed to pause research. Please try again.');
+      this.pausingResearch.set(false);
+      this.showResearchControls.set(false);
+    }
+    // Note: We do NOT clear pausingResearch here - it stays true until the summary actually arrives
+    // The button will re-enable when the research controls auto-hide after receiving the paused message
+  }
+
+  openMcpToolsDialog() {
+    this.dialog.open(McpToolsDialogComponent, {
+      width: '90vw',
+      maxWidth: '1000px',
+      maxHeight: '90vh',
+      panelClass: 'mcp-tools-dialog-container'
+    });
+  }
+  
   private scrollToBottom() {
     try {
       if (this.messagesContainer) {

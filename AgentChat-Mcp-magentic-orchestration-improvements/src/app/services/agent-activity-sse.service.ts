@@ -53,6 +53,8 @@ export class AgentActivityService {
     }
   ]);
   
+  private _isResearchActive = signal<boolean>(false);
+  
   private eventSource?: EventSource;
   private currentSessionId?: string;
 
@@ -67,6 +69,7 @@ export class AgentActivityService {
   // Public readonly signals for components
   readonly activities = this._activities.asReadonly();
   readonly agentStatuses = this._agentStatuses.asReadonly();
+  readonly isResearchActive = this._isResearchActive.asReadonly();
 
   async joinSession(sessionId: string) {
     // console.log('🚀 Joining session with SSE:', sessionId);
@@ -143,10 +146,45 @@ export class AgentActivityService {
             status: data.status,
             timestamp: data.timestamp
           });
+          
+          // Detect if research orchestrator is active
+          if (data.agentName === 'Research Orchestrator') {
+            if (data.action?.includes('Starting') || data.action?.includes('round')) {
+              this._isResearchActive.set(true);
+            } else if (data.status === 'completed' || data.status === 'paused' || data.status === 'error') {
+              this._isResearchActive.set(false);
+            }
+          }
+          
           this.handleRealtimeAgentActivity(data);
         } catch (error) {
           console.error('❌ Error parsing agentActivity event:', error);
           console.log('  📄 Raw agentActivity data:', (event as MessageEvent).data);
+        }
+      });
+      
+      this.eventSource.addEventListener('researchSummary', (event) => {
+        try {
+          const data = JSON.parse((event as MessageEvent).data);
+          console.log('📊 Received researchSummary event:', data);
+          console.log('📊 Research summary details:', {
+            roundNum: data.roundNum,
+            maxRounds: data.maxRounds,
+            summary: data.summary?.substring(0, 100) + '...'
+          });
+          // Emit the summary as a special activity for display
+          this.handleRealtimeAgentActivity({
+            id: data.id,
+            agentId: 'research-orchestrator',
+            agentName: 'Research Orchestrator',
+            action: `Progress Summary (Round ${data.roundNum}/${data.maxRounds})`,
+            status: 'in-progress',
+            timestamp: new Date(data.timestamp),
+            details: data.summary
+          });
+        } catch (error) {
+          console.error('❌ Error parsing researchSummary event:', error);
+          console.log('  📄 Raw researchSummary data:', (event as MessageEvent).data);
         }
       });
 

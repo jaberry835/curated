@@ -30,6 +30,7 @@ from .agent_routes import agent_bp
 from .chat_routes import chat_bp
 from .document_routes import document_bp
 from .mcp_routes import mcp_bp
+from .remote_agent_routes import remote_agents_bp, init_agents
 
 
 def create_app() -> Flask:
@@ -104,6 +105,12 @@ def create_app() -> Flask:
     app.register_blueprint(chat_bp)
     app.register_blueprint(document_bp)
     app.register_blueprint(mcp_bp)
+    app.register_blueprint(remote_agents_bp)
+    
+    # Initialize remote agents on startup
+    logger.info("Initializing remote agents...")
+    init_agents()
+    logger.info("Remote agents initialized successfully")
     
     # Serve Angular frontend at root
     @app.route('/')
