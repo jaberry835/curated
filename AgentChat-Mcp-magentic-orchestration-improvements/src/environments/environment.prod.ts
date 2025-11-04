@@ -28,7 +28,7 @@ export const environment = {
     },
     functions: {
       baseUrl: '', // Not using Azure Functions
-      mcpServerUrl: 'https://agent-a2a.azurewebsites.us/api/mcp' // Points to same app service
+      mcpServerUrl: 'https://<mcpserver>.azurewebsites.us/api' // Points to MCP server base URL (endpoints append /tools, /tools/list, etc.)
     }
   },
   api: {

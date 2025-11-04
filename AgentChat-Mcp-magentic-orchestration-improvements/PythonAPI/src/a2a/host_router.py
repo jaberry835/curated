@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -80,6 +81,10 @@ class RoutingHost:
         self.router: Optional[ChatCompletionAgent] = None
         self._context_headers: Dict[str, str] = {}
         self._session_id: Optional[str] = None
+        
+        # Research control state
+        self._research_control: Dict[str, Dict[str, Any]] = {}  # session_id -> control state
+        self._research_control_lock = asyncio.Lock()
 
     async def _delegate(self, agent_name: str, task: str) -> str:
         """Shared delegation path with SSE instrumentation."""
@@ -145,6 +150,200 @@ class RoutingHost:
                 )
             return f"Error delegating to {agent_name}: {str(e)}"
 
+    async def _delegate_with_retry(
+        self, 
+        agent_name: str, 
+        task: str,
+        max_retries: int = 3,
+        initial_backoff: float = 2.0
+    ) -> str:
+        """Delegate with exponential backoff retry for 429 errors."""
+        
+        for attempt in range(max_retries + 1):
+            try:
+                return await self._delegate(agent_name, task)
+            except Exception as e:
+                error_str = str(e).lower()
+                
+                # Check if it's a 429 rate limit error
+                if "429" in error_str or "rate limit" in error_str or "too many requests" in error_str:
+                    if attempt < max_retries:
+                        backoff_time = initial_backoff * (2 ** attempt)  # Exponential backoff
+                        
+                        session_id = self._session_id or self._context_headers.get("X-Session-ID")
+                        if session_id:
+                            sse_emitter.emit_agent_activity(
+                                session_id=session_id,
+                                agent_name=agent_name,
+                                action=f"Rate limited - retrying in {backoff_time:.1f}s",
+                                status="warning",
+                                details=f"Attempt {attempt + 1}/{max_retries + 1}",
+                            )
+                        
+                        logger.warning(f"⏳ Rate limit hit for {agent_name}, waiting {backoff_time}s before retry {attempt + 1}")
+                        await asyncio.sleep(backoff_time)
+                        continue
+                    else:
+                        # Max retries exceeded
+                        session_id = self._session_id or self._context_headers.get("X-Session-ID")
+                        if session_id:
+                            sse_emitter.emit_agent_activity(
+                                session_id=session_id,
+                                agent_name=agent_name,
+                                action="Rate limit exceeded after retries",
+                                status="error",
+                                details=f"Failed after {max_retries} retry attempts",
+                            )
+                        return f"[{agent_name}] Rate limit exceeded after {max_retries} retries. Please try again in a few moments."
+                else:
+                    # Not a rate limit error, re-raise
+                    raise
+        
+        return f"[{agent_name}] Failed after {max_retries} retries"
+
+    async def pause_research(self, session_id: str) -> bool:
+        """Signal research to pause gracefully."""
+        async with self._research_control_lock:
+            if session_id not in self._research_control:
+                self._research_control[session_id] = {}
+            self._research_control[session_id]['pause_requested'] = True
+            logger.info(f"⏸️ Pause requested for research session: {session_id}")
+            return True
+    
+    async def resume_research(self, session_id: str) -> bool:
+        """Resume paused research."""
+        async with self._research_control_lock:
+            if session_id in self._research_control:
+                self._research_control[session_id]['pause_requested'] = False
+                logger.info(f"▶️ Resume requested for research session: {session_id}")
+                return True
+            return False
+    
+    async def request_summary(self, session_id: str) -> bool:
+        """Request immediate summary of current research."""
+        async with self._research_control_lock:
+            if session_id not in self._research_control:
+                self._research_control[session_id] = {}
+            self._research_control[session_id]['summary_requested'] = True
+            logger.info(f"📊 Summary requested for research session: {session_id}")
+            return True
+    
+    async def _check_pause_requested(self, session_id: str) -> bool:
+        """Check if pause has been requested."""
+        async with self._research_control_lock:
+            return self._research_control.get(session_id, {}).get('pause_requested', False)
+    
+    async def _check_summary_requested(self, session_id: str) -> bool:
+        """Check if summary has been requested."""
+        async with self._research_control_lock:
+            requested = self._research_control.get(session_id, {}).get('summary_requested', False)
+            if requested:
+                # Clear the flag after checking
+                self._research_control[session_id]['summary_requested'] = False
+            return requested
+    
+    def _generate_progress_summary(self, research_history: ChatHistory) -> str:
+        """Generate a summary of research progress so far."""
+        
+        logger.info(f"🔍 Generating progress summary from ChatHistory with {len(research_history.messages)} messages")
+        
+        agents_used = set()
+        key_findings = []
+        
+        for idx, msg in enumerate(research_history.messages):
+            content_str = str(msg.content) if msg.content else ""
+            logger.debug(f"📝 Message {idx+1}/{len(research_history.messages)}: Role={msg.role.value}, Length={len(content_str)}, Preview={content_str[:100]}...")
+            
+            # Track which agents were called - look for [AgentName] pattern
+            import re
+            agent_pattern = r'\[([A-Za-z]+Agent)\]'
+            matches = re.findall(agent_pattern, content_str)
+            if matches:
+                logger.info(f"✅ Found agent names in content: {matches}")
+            for agent_name in matches:
+                agents_used.add(agent_name)
+            
+            # Also check for function calls in message items
+            if hasattr(msg, 'items') and msg.items:
+                logger.debug(f"🔧 Message has {len(msg.items)} items")
+                for item_idx, item in enumerate(msg.items):
+                    logger.debug(f"  Item {item_idx+1}: {type(item).__name__}")
+                    if hasattr(item, 'function_name'):
+                        logger.info(f"  Function call: {item.function_name}")
+                        if item.function_name == 'delegate_task':
+                            # Extract agent name from function arguments
+                            try:
+                                if hasattr(item, 'arguments'):
+                                    args = item.arguments
+                                    if isinstance(args, dict) and 'agent_name' in args:
+                                        agent_name = args['agent_name']
+                                        logger.info(f"✅ Found agent from function arguments: {agent_name}")
+                                        agents_used.add(agent_name)
+                            except Exception as e:
+                                logger.error(f"Error extracting agent name from function arguments: {e}")
+            
+            # Collect substantial responses (but skip [PAUSED] messages)
+            if msg.role.value == "assistant" and len(content_str) > 100 and "[PAUSED]" not in content_str:
+                # Take first 400 chars as preview
+                preview = content_str[:400] + ("..." if len(content_str) > 400 else "")
+                key_findings.append(preview)
+                logger.debug(f"📊 Added finding preview: {preview[:100]}...")
+        
+        logger.info(f"🎯 Summary generation complete: {len(agents_used)} agents found, {len(key_findings)} findings")
+        logger.info(f"   Agents: {sorted(agents_used)}")
+        
+        summary = f"**Agents Consulted:** {', '.join(sorted(agents_used)) if agents_used else 'None yet'}\n\n"
+        
+        if key_findings:
+            summary += "**Key Findings So Far:**\n"
+            for i, finding in enumerate(key_findings[-3:], 1):  # Last 3 findings
+                summary += f"{i}. {finding}\n\n"
+        else:
+            summary += "**Status:** Research in progress, no substantial findings yet.\n"
+        
+        return summary
+
+    async def _check_research_scope(self, research_objective: str, agent_list: List[str]) -> Optional[str]:
+        """Check if research scope needs to be narrowed, especially for ADX-heavy queries."""
+        
+        # If ADXAgent is involved, check table count
+        if "ADXAgent" in agent_list:
+            try:
+                # Quick check to see how many tables are available
+                table_check = await self._delegate_with_retry("ADXAgent", "List all available tables (names only)")
+                
+                # Count tables (simple heuristic - count occurrences of common table indicators)
+                import re
+                table_patterns = re.findall(r'\btable\b|\bTable\b|\b\w+Table\b', table_check, re.IGNORECASE)
+                table_count = len(set(table_patterns))  # Unique table references
+                
+                if table_count > 10:
+                    session_id = self._session_id or self._context_headers.get("X-Session-ID")
+                    if session_id:
+                        sse_emitter.emit_agent_activity(
+                            session_id=session_id,
+                            agent_name="Research Orchestrator",
+                            action="Large data environment detected",
+                            status="info",
+                            details=f"Found approximately {table_count} tables. Recommending scope narrowing.",
+                        )
+                    
+                    return (
+                        f"🔍 **Large Data Environment Detected**\n\n"
+                        f"I found approximately {table_count} tables in the ADX environment. "
+                        f"To provide faster and more focused results:\n\n"
+                        f"**Available tables:**\n{table_check}\n\n"
+                        f"**Please specify:**\n"
+                        f"- Which specific tables should I focus on?\n"
+                        f"- What time range are you interested in?\n"
+                        f"- Are there specific identifiers (IPs, names, etc.) to search for?\n\n"
+                        f"Or reply 'search all' to proceed with comprehensive research (may take 3+ minutes)."
+                    )
+            except Exception as e:
+                logger.warning(f"Could not check ADX scope: {e}")
+        
+        return None
+
     def set_context(
         self,
         user_id: Optional[str] = None,
@@ -199,10 +398,16 @@ class RoutingHost:
 
         @kernel_function(
             name="delegate_task",
-            description="Delegate a task to a remote specialist via A2A",
+            description="Delegate a task to a remote specialist via A2A with automatic retry on rate limits",
         )
         async def delegate_task(agent_name: str, task: str) -> str:
-            return await self._delegate(agent_name, task)
+            # Check if pause is requested before delegating
+            session_id = self._session_id or self._context_headers.get("X-Session-ID")
+            if session_id and await self._check_pause_requested(session_id):
+                logger.info(f"⏸️ Delegation to {agent_name} skipped due to pause request")
+                return f"[PAUSED] Research paused by user before calling {agent_name}"
+            
+            return await self._delegate_with_retry(agent_name, task)
 
         @kernel_function(
             name="collaborate_agents",
@@ -445,6 +650,11 @@ Start by planning your approach, then execute the steps.
         if missing_agents:
             return f"Cannot start research: agents not found: {missing_agents}"
         
+        # Check if research scope needs narrowing (for large ADX environments)
+        scope_check = await self._check_research_scope(research_objective, agent_list)
+        if scope_check:
+            return scope_check
+        
         if session_id:
             sse_emitter.emit_agent_activity(
                 session_id=session_id,
@@ -453,6 +663,14 @@ Start by planning your approach, then execute the steps.
                 status="starting",
                 details=f"Objective: {research_objective[:200]}... Agents: {relevant_agents}",
             )
+        
+        # Initialize control state for this session
+        if session_id:
+            async with self._research_control_lock:
+                self._research_control[session_id] = {
+                    'pause_requested': False,
+                    'summary_requested': False
+                }
         
         # Create research orchestrator agent with special instructions
         research_orchestrator = ChatCompletionAgent(
@@ -480,10 +698,131 @@ When you have sufficient information, synthesize a comprehensive final answer.""
         
         max_rounds = 12  # Allow more rounds for deep research
         round_num = 0
+        # Track all messages across rounds for summary generation
+        all_round_messages = []
+        
+        # Get the time limit from settings (default 4 minutes = 240 seconds)
+        from src.config.settings import settings
+        round_time_limit = settings.RESEARCH_ROUND_TIME_LIMIT_SECONDS
+        round_start_time = time.time()
+        
+        logger.info(f"⏱️ Research round time limit: {round_time_limit} seconds ({round_time_limit/60:.1f} minutes)")
         
         try:
             while round_num < max_rounds:
                 round_num += 1
+                
+                # Check if round time limit exceeded
+                elapsed_time = time.time() - round_start_time
+                if elapsed_time > round_time_limit:
+                    logger.info(f"⏱️ Round time limit exceeded: {elapsed_time:.1f}s > {round_time_limit}s")
+                    
+                    # Create temp_history for summary
+                    temp_history = ChatHistory()
+                    for msg in research_history.messages:
+                        temp_history.add_message(msg)
+                    for msg in all_round_messages:
+                        if msg not in temp_history.messages:
+                            temp_history.add_message(msg)
+                    
+                    summary = self._generate_progress_summary(temp_history)
+                    
+                    if session_id:
+                        sse_emitter.emit_agent_activity(
+                            session_id=session_id,
+                            agent_name="Research Orchestrator",
+                            action="Round time limit reached",
+                            status="paused",
+                            details=f"Research round exceeded {round_time_limit/60:.1f} minute time limit",
+                        )
+                    
+                    # Cleanup control state
+                    if session_id:
+                        async with self._research_control_lock:
+                            self._research_control.pop(session_id, None)
+                    
+                    return (
+                        f"⏱️ **Research Round Time Limit Reached**\n\n"
+                        f"The current research round has been running for {elapsed_time/60:.1f} minutes, "
+                        f"which exceeds the configured limit of {round_time_limit/60:.1f} minutes.\n\n"
+                        f"**Progress Summary (Round {round_num}/{max_rounds}):**\n{summary}\n\n"
+                        f"**Next Steps:**\n"
+                        f"- Ask a follow-up question to continue researching specific aspects\n"
+                        f"- Reply 'continue' to resume the research\n"
+                        f"- Or consider this complete if you have the information you need\n\n"
+                        f"💡 *Tip: You can adjust the time limit by setting RESEARCH_ROUND_TIME_LIMIT_SECONDS in your .env file*"
+                    )
+                
+                # Check for pause request
+                if session_id and await self._check_pause_requested(session_id):
+                    # Combine research_history with all accumulated messages from previous rounds
+                    logger.info(f"⏸️ Pause detected at round {round_num}/{max_rounds}")
+                    logger.info(f"📊 Research history has {len(research_history.messages)} messages")
+                    logger.info(f"📨 Accumulated messages from previous rounds: {len(all_round_messages)} messages")
+                    
+                    # Create temp_history combining both sources
+                    # FIX: Use empty constructor and add messages properly
+                    temp_history = ChatHistory()
+                    
+                    # Add all messages from research_history
+                    for msg in research_history.messages:
+                        temp_history.add_message(msg)
+                    
+                    # Add all accumulated messages from previous rounds
+                    for msg in all_round_messages:
+                        if msg not in temp_history.messages:
+                            temp_history.add_message(msg)
+                    
+                    logger.info(f"📊 Temp history for summary has {len(temp_history.messages)} messages")
+                    for i, msg in enumerate(temp_history.messages, 1):
+                        logger.debug(f"  Message {i}: Role={msg.role}, Content preview: {str(msg.content)[:100] if hasattr(msg, 'content') else str(msg)[:100]}")
+                    
+                    summary = self._generate_progress_summary(temp_history)
+                    
+                    if session_id:
+                        sse_emitter.emit_agent_activity(
+                            session_id=session_id,
+                            agent_name="Research Orchestrator",
+                            action="Research paused by user",
+                            status="paused",
+                            details="Generating progress summary...",
+                        )
+                    
+                    # Cleanup control state
+                    if session_id:
+                        async with self._research_control_lock:
+                            self._research_control.pop(session_id, None)
+                    
+                    return (
+                        f"⏸️ **Research Paused**\n\n"
+                        f"**Progress Summary (Round {round_num}/{max_rounds}):**\n{summary}\n\n"
+                        f"**Next Steps:**\n"
+                        f"- Reply 'continue' to resume research\n"
+                        f"- Ask a follow-up question to redirect the research\n"
+                        f"- Or consider this complete if you have what you need"
+                    )
+                
+                # Check for summary request
+                if session_id and await self._check_summary_requested(session_id):
+                    summary = self._generate_progress_summary(research_history)
+                    
+                    if session_id:
+                        sse_emitter.emit_agent_activity(
+                            session_id=session_id,
+                            agent_name="Research Orchestrator",
+                            action="Progress summary generated",
+                            status="in-progress",
+                            details=summary[:200] + "...",
+                        )
+                        
+                        # Emit summary as a special event
+                        sse_emitter.emit_research_summary(
+                            session_id=session_id,
+                            round_num=round_num,
+                            max_rounds=max_rounds,
+                            summary=summary
+                        )
+                    # Continue research after summary
                 
                 if session_id:
                     sse_emitter.emit_agent_activity(
@@ -503,6 +842,21 @@ When you have sufficient information, synthesize a comprehensive final answer.""
                 ):
                     messages.append(msg)
                 
+                # Validate that research_history has proper message structure
+                # Semantic Kernel should have updated research_history in place
+                logger.debug(f"🔍 After invoke: research_history has {len(research_history.messages)} messages")
+                for idx, msg in enumerate(research_history.messages):
+                    if not hasattr(msg, 'role') or not hasattr(msg, 'content'):
+                        logger.error(f"❌ Invalid message at index {idx}: {type(msg)} - {msg}")
+                        # Skip accumulating invalid messages
+                        continue
+                
+                # Accumulate messages from this round for summary generation
+                # Only add NEW messages that aren't already in all_round_messages
+                for msg in messages:
+                    if msg not in all_round_messages:
+                        all_round_messages.append(msg)
+                
                 # Extract response content from the last message
                 if len(messages) == 0:
                     # No response, prompt for next action
@@ -519,6 +873,65 @@ When you have sufficient information, synthesize a comprehensive final answer.""
                 else:
                     response_content = str(last_message)
                 
+                # Check if delegation was paused mid-research
+                if "[PAUSED]" in response_content:
+                    # Add debug logging to see what's in research_history vs messages
+                    logger.info(f"📊 Research history has {len(research_history.messages)} messages before summary")
+                    logger.debug(f"🔍 Research history message types: {[msg.role for msg in research_history.messages]}")
+                    logger.info(f"📨 Messages list from invoke() has {len(messages)} messages")
+                    logger.debug(f"🔍 Messages list message types: {[msg.role for msg in messages]}")
+                    
+                    # The invoke() call should have updated research_history,
+                    # but if not, we can analyze the messages list directly
+                    # Create a temporary ChatHistory combining research_history with all accumulated messages
+                    temp_history = ChatHistory()
+                    
+                    # Add all messages from research_history
+                    for msg in research_history.messages:
+                        temp_history.add_message(msg)
+                    
+                    # Add all accumulated messages from previous rounds
+                    for msg in all_round_messages:
+                        # Check if this message is already in temp_history
+                        # to avoid duplicates (since invoke() may update research_history in place)
+                        if msg not in temp_history.messages:
+                            temp_history.add_message(msg)
+                    
+                    logger.info(f"📊 Temp history for summary has {len(temp_history.messages)} messages")
+                    summary = self._generate_progress_summary(temp_history)
+                    
+                    if session_id:
+                        sse_emitter.emit_agent_activity(
+                            session_id=session_id,
+                            agent_name="Research Orchestrator",
+                            action="Research paused by user",
+                            status="paused",
+                            details="Paused during agent delegation",
+                        )
+                    
+                    # Cleanup control state
+                    if session_id:
+                        async with self._research_control_lock:
+                            self._research_control.pop(session_id, None)
+                    
+                    # Emit SSE event for the pause summary
+                    if session_id:
+                        sse_emitter.emit_research_summary(
+                            session_id=session_id,
+                            round_num=round_num,
+                            max_rounds=max_rounds,
+                            summary=summary
+                        )
+                    
+                    return (
+                        f"⏸️ **Research Paused**\n\n"
+                        f"**Progress Summary (Round {round_num}/{max_rounds}):**\n{summary}\n\n"
+                        f"**Next Steps:**\n"
+                        f"- Reply 'continue' to resume research\n"
+                        f"- Ask a follow-up question to redirect the research\n"
+                        f"- Or consider this complete if you have what you need"
+                    )
+                
                 # Check if research is complete
                 if self._is_research_complete(response_content):
                     if session_id:
@@ -529,6 +942,12 @@ When you have sufficient information, synthesize a comprehensive final answer.""
                             status="completed",
                             details=response_content[:400] + ("..." if len(response_content) > 400 else ""),
                         )
+                    
+                    # Cleanup control state
+                    if session_id:
+                        async with self._research_control_lock:
+                            self._research_control.pop(session_id, None)
+                    
                     return response_content
                 
                 # If orchestrator didn't call a function and hasn't concluded,
@@ -544,6 +963,10 @@ When you have sufficient information, synthesize a comprehensive final answer.""
                         for indicator in ["based on", "in summary", "findings show", "analysis reveals"]
                     ):
                         # This appears to be a final synthesis
+                        # Cleanup control state
+                        if session_id:
+                            async with self._research_control_lock:
+                                self._research_control.pop(session_id, None)
                         return response_content
                     
                     # Otherwise prompt for next action
@@ -554,24 +977,23 @@ When you have sufficient information, synthesize a comprehensive final answer.""
                 # If function was called, invoke() already added response to history
                 # Loop will continue with next round
             
-            # Max rounds reached
-            final_msg = "Research reached maximum iterations. Here are the accumulated findings:\n\n"
+            # Max rounds reached - generate progress summary
+            summary = self._generate_progress_summary(research_history)
+            final_msg = f"⏱️ **Research Reached Maximum Iterations** ({max_rounds} rounds)\n\n{summary}"
             
-            # Extract all agent responses from history
-            findings = []
-            for msg in research_history.messages:
-                # Safely convert content to string before checking length
-                content_str = str(msg.content) if msg.content is not None else ""
-                if msg.role.value == "assistant" and len(content_str) > 50:
-                    findings.append(content_str)
-            
-            if findings:
-                final_msg += "\n\n".join(findings[-3:])  # Last 3 substantial responses
+            # Cleanup control state
+            if session_id:
+                async with self._research_control_lock:
+                    self._research_control.pop(session_id, None)
             
             return final_msg
             
         except Exception as e:
+            import traceback
             error_msg = f"Error during iterative research: {str(e)}"
+            logger.error(f"❌ Research error: {error_msg}")
+            logger.error(f"📍 Error traceback:\n{traceback.format_exc()}")
+            logger.error(f"📊 Research state: round {round_num}/{max_rounds}, history size {len(research_history.messages)}")
             if session_id:
                 sse_emitter.emit_agent_activity(
                     session_id=session_id,
@@ -580,6 +1002,9 @@ When you have sufficient information, synthesize a comprehensive final answer.""
                     status="error",
                     details=error_msg,
                 )
+                # Cleanup control state
+                async with self._research_control_lock:
+                    self._research_control.pop(session_id, None)
             return error_msg
     
     def _is_research_complete(self, content: str) -> bool:
@@ -597,10 +1022,30 @@ When you have sufficient information, synthesize a comprehensive final answer.""
             "complete analysis",
             "research summary:",
             "final research findings",
+            "summary of research findings",  # Added
+            "final research summary",        # Added
+            "### final",                     # Markdown heading
+            "## final",                      # Markdown heading
+            "**final",                       # Bold final
+            "next steps:",                   # Added - indicates conclusion with recommendations
+            "recommendation:",               # Added
+            "### completion:",               # Added
+            "**completion:**",               # Added
         ]
         
         content_lower = content.lower()
-        return any(indicator in content_lower for indicator in completion_indicators)
+        has_indicator = any(indicator in content_lower for indicator in completion_indicators)
+        
+        # Additional check: if response is very long (> 1500 chars) and contains "final" or "complete"
+        # it's likely a comprehensive conclusion
+        if len(content) > 1500 and ("final" in content_lower or "complete" in content_lower):
+            logger.info(f"🎯 Detected completion: Long response ({len(content)} chars) with 'final' or 'complete'")
+            return True
+        
+        if has_indicator:
+            logger.info(f"🎯 Detected completion indicator in response")
+        
+        return has_indicator
     
     def _research_orchestration_instructions(self, agent_names: List[str], objective: str) -> str:
         """Generate instructions for the research orchestrator."""
@@ -681,13 +1126,13 @@ When researching **people**, ask ADXAgent to search for:
 
 🎓 EXAMPLE DISCOVERY PATTERNS (not prescriptive - just possibilities):
 
-*Scenario*: Researching company "TechCorp"
-- Start → FictionalCompaniesAgent: "Tell me about TechCorp" → Discover they have devices at IPs 10.1.2.3, 10.1.2.4
-- Follow-up #1 → ADXAgent: "Search all tables for any data about TechCorp, including company records, employee/personnel data, and organizational information" → Find company appears in database with employee records
-- Follow-up #2 → ADXAgent: "Search for any activity from IP 10.1.2.3" → Find security scans showing vulnerabilities
-- New angle → ADXAgent: "Find any employees or people associated with TechCorp" → Discover employee names, roles, contact info
+*Scenario*: Researching a company
+- Start → FictionalCompaniesAgent: "Tell me about [CompanyName]" → Discover they have devices at IPs x.x.x.x, y.y.y.y
+- Follow-up #1 → ADXAgent: "Search all tables for any data about [CompanyName], including company records, employee/personnel data, and organizational information" → Find company appears in database with employee records
+- Follow-up #2 → ADXAgent: "Search for any activity from IP x.x.x.x" → Find security scans showing vulnerabilities
+- New angle → ADXAgent: "Find any employees or people associated with [CompanyName]" → Discover employee names, roles, contact info
 - Integration → InvestigatorAgent: "Research backgrounds of [employees discovered]" → Get career histories and professional backgrounds
-- Deep dive → ADXAgent: "Search for any security events, alerts, or network activity related to TechCorp or its employees" → Cross-reference findings
+- Deep dive → ADXAgent: "Search for any security events, alerts, or network activity related to [CompanyName] or its employees" → Cross-reference findings
 - Synthesis → Combine business profile + database records + employee data + network security posture + leadership context
 
 *The key*: Each finding generates new questions. ADXAgent searches **databases** (not just IPs), so use it to find company data, people data, and cross-references. Follow what seems most valuable.
@@ -709,15 +1154,15 @@ When synthesizing your final response, you MUST include:
    - If ADXAgent found people/employees in database tables → **Include them in final response**
    - If ADXAgent found company records in database → **Include them in final response**
    - If ADXAgent found IPs, scans, logs, alerts → **Include them in final response**
-   - Example: "Database records show Mark Reynolds (Zyphronix Dynamics employee, address: 200 Elm St, Tysons VA)"
+   - Example: "Database records show employee John Smith (address: 123 Main St, City State)"
 
 2. **All Research Attempts (Even Unsuccessful Ones):**
    - If you researched someone but InvestigatorAgent found no background info → **Still mention the person was found in database**
-   - Example: "Database identified Mark Reynolds as a Zyphronix employee, though no additional background information was available in public records"
+   - Example: "Database identified John Smith as a company employee, though no additional background information was available in public records"
 
 3. **Cross-Reference Database + External Sources:**
    - Database findings (people, IPs, scans) are **primary intelligence**
-   - InvestigatorAgent findings (C-suite executives, leadership) are **secondary intelligence**
+   - InvestigatorAgent findings (executives, leadership) are **secondary intelligence**
    - **Mention both** in synthesis, clearly distinguishing sources
 
 4. **Clear Attribution:**
@@ -726,10 +1171,10 @@ When synthesizing your final response, you MUST include:
    - "Public research found..." (from InvestigatorAgent)
 
 ❌ **WRONG Synthesis:**
-"Leadership team includes CEO Dr. Kythara Moonwhisper, CTO Vex Stellarforge..." [omits Mark Reynolds found in database]
+"Leadership team includes CEO Jane Doe, CTO John Smith..." [omits other employees found in database]
 
 ✅ **CORRECT Synthesis:**
-"Database records identified Mark Reynolds (address: 200 Elm St, Tysons VA) as associated with Zyphronix Dynamics. While public records contained limited information about Mark Reynolds, leadership team research found CEO Dr. Kythara Moonwhisper, CTO Vex Stellarforge..."
+"Database records identified several employees including John Smith (address: 123 Main St, City State). While public records contained limited information about John Smith, leadership team research found CEO Jane Doe, CTO John Smith..."
 
 **KEY PRINCIPLE:** Database discoveries are often the MOST important findings because they show actual data in your systems. Never omit them from synthesis.
 
@@ -775,10 +1220,10 @@ Always provide a comprehensive final answer that addresses the original question
             "🚨 PRIORITY RULE #1: COMPANY RESEARCH ALWAYS USES research_task 🚨\n"
             "If the user mentions ANY company name or asks to research/investigate/look up a company, you MUST use research_task.\n"
             "Examples that trigger research_task:\n"
-            "  ✅ 'Research Zyphronix Dynamics' → research_task(research_objective='Research Zyphronix Dynamics', relevant_agents='FictionalCompaniesAgent,ADXAgent,InvestigatorAgent')\n"
+            "  ✅ 'Research CompanyName' → research_task(research_objective='Research CompanyName', relevant_agents='FictionalCompaniesAgent,ADXAgent,InvestigatorAgent')\n"
             "  ✅ 'Tell me about TechCorp' → research_task(research_objective='Research TechCorp', relevant_agents='FictionalCompaniesAgent,ADXAgent,InvestigatorAgent')\n"
-            "  ✅ 'Zyphronix Dynamics' → research_task(research_objective='Research Zyphronix Dynamics', relevant_agents='FictionalCompaniesAgent,ADXAgent,InvestigatorAgent')\n"
-            "  ✅ 'Please Research the company: Zyphronix Dynamics' → research_task(research_objective='Research the company: Zyphronix Dynamics', relevant_agents='FictionalCompaniesAgent,ADXAgent,InvestigatorAgent')\n"
+            "  ✅ 'AcmeCorporation' → research_task(research_objective='Research AcmeCorporation', relevant_agents='FictionalCompaniesAgent,ADXAgent,InvestigatorAgent')\n"
+            "  ✅ 'Please Research the company: GlobalTech Inc' → research_task(research_objective='Research the company: GlobalTech Inc', relevant_agents='FictionalCompaniesAgent,ADXAgent,InvestigatorAgent')\n"
             "  ❌ NEVER use delegate_task for company research - it will miss critical insights!\n\n"
             
             "AGENT CAPABILITIES:\n"
@@ -822,9 +1267,9 @@ Always provide a comprehensive final answer that addresses the original question
             "   - Multi-round investigation: Research that requires following leads and discovering new information\n"
             "   - Iterative analysis: Each finding leads to new questions and deeper investigation\n"
             "   - Examples:\n"
-            "     * 'Research TechCorp' → Find company → Get IPs → Check scans → Investigate CEO → Cross-reference docs → Synthesis\n"
-            "     * 'Zyphronix Dynamics' → Company info → IP addresses → Security scans → Leadership research → Documents → Full report\n"
-            "     * 'Investigate suspicious IP 1.2.3.4' → Check ownership → Query logs → Research owner → Find related IPs → Compile\n"
+            "     * 'Research CompanyX' → Find company → Get IPs → Check scans → Investigate CEO → Cross-reference docs → Synthesis\n"
+            "     * 'AcmeCorp investigation' → Company info → IP addresses → Security scans → Leadership research → Documents → Full report\n"
+            "     * 'Investigate suspicious IP x.x.x.x' → Check ownership → Query logs → Research owner → Find related IPs → Compile\n"
             "     * 'Deep dive on Project X' → Check docs → Identify stakeholders → Research each → Gather intel → Synthesis\n"
             "   - Use when: Solution path is unknown OR findings should guide next steps OR comprehensive research needed\n"
             "   - KEY: Company names alone = research (not simple lookup)\n\n"

@@ -160,48 +160,9 @@ class KustoClientManager:
     
     def __init__(self, config: KustoConfig):
         self.config = config
-        self._user_clients: Dict[str, KustoClient] = {}  # Cache for user-specific clients
+        self._service_client: Optional[KustoClient] = None  # Cache only for service identity
         self._service_credential = None
-        # Max number of cached user clients (simple LRU-ish cleanup)
-        self._max_user_clients = int(os.getenv("KUSTO_MAX_USER_CLIENTS", "25"))
 
-    # --------------------------- Helper utilities ---------------------------
-    def _compute_token_hash(self, token: str) -> str:
-        import hashlib
-        return hashlib.sha256(token.encode('utf-8')).hexdigest()
-
-    def _parse_token_exp(self, token: str) -> Optional[int]:
-        try:
-            import base64, json
-            parts = token.split('.')
-            if len(parts) >= 2:
-                payload = parts[1] + '=' * (4 - len(parts[1]) % 4)
-                data = json.loads(base64.b64decode(payload))
-                return int(data.get('exp')) if data.get('exp') else None
-        except Exception:
-            return None
-        return None
-
-    def _cleanup_user_clients(self):
-        """Remove expired or excess user clients to prevent unbounded growth."""
-        now = time.time()
-        to_delete = []
-        for k, meta in self._user_clients.items():
-            exp = meta.get('exp')
-            # Remove if expired more than 5 minutes ago
-            if exp and exp + 300 < now:
-                to_delete.append(k)
-        for k in to_delete:
-            logger.info(f"🧹 Removing expired user Kusto client cache entry: {k[:8]}…")
-            self._user_clients.pop(k, None)
-
-        # If still above max, drop oldest
-        if len(self._user_clients) > self._max_user_clients:
-            sorted_items = sorted(self._user_clients.items(), key=lambda kv: kv[1].get('created', 0))
-            for k, _ in sorted_items[: len(self._user_clients) - self._max_user_clients]:
-                logger.info(f"🧹 Trimming user client cache (LRU drop): {k[:8]}…")
-                self._user_clients.pop(k, None)
-        
     def _get_service_credential(self):  # Deprecated path retained to avoid accidental calls
         raise RuntimeError("Service identity authentication disabled: user bearer token required")
     
@@ -369,7 +330,7 @@ class KustoClientManager:
             raise
         
     def get_client(self) -> KustoClient:
-        """Get Kusto client with user impersonation - requires valid user token"""
+        """Get Kusto client with user impersonation - always creates fresh client with current token"""
         try:
             # Check if we have a user token for impersonation using the new helper
             user_token = get_user_token()
@@ -383,60 +344,24 @@ class KustoClientManager:
                 # No fallback - require user token for impersonation
                 raise ValueError("❌ No user token available for Azure Data Explorer access. User authentication is required for ADX operations.")
             
-            # Use user impersonation via On-Behalf-Of flow
-            logger.info("🔄 User token detected, attempting user impersonation for Kusto client")
+            # USER IMPERSONATION MODE - always create fresh client (no caching)
+            logger.info("� Creating fresh user-impersonated Kusto client with current token")
             
-            # Create a cache key for the user token (first 20 chars for security)
-            token_key = user_token[:20] if len(user_token) > 20 else user_token
-            
-            # Check if we already have a client for this user token
-            if token_key not in self._user_clients:
-                logger.info(f"🔧 Creating new user-impersonated client for token key: {token_key}")
-                try:
-                    credential = self._get_user_credential(user_token)
-                    kcsb = KustoConnectionStringBuilder.with_azure_token_credential(
-                        self.config.cluster_url,
-                        credential
-                    )
-                    self._user_clients[token_key] = KustoClient(kcsb)
-                    logger.info(f"✅ Created new Kusto client with user impersonation for token: {token_key}")
-                    
-                    # Test the client with a simple query
-                    #logger.info("🧪 Testing user-impersonated client connection...")
-                    # try:
-                    #     # Use a safer test query that should work in any environment
-                    #     test_response = self._user_clients[token_key].execute("NetDefaultDB", "print 'USER_IMPERSONATION_TEST'")
-                    #     logger.info("✅ User impersonation client test successful")
-                    # except Exception as test_error:
-                    #     logger.error(f"❌ User impersonation client test failed: {test_error}")
-                    #     logger.error(f"   - Error type: {type(test_error).__name__}")
-                    #     logger.error(f"   - Error message: {str(test_error)}")
-                        
-                    #     # Check for specific 401 patterns
-                    #     error_str = str(test_error).lower()
-                    #     if "401" in error_str:
-                    #         logger.error("🔍 401 Unauthorized detected - possible causes:")
-                    #         logger.error("   1. Token audience mismatch (token not for ADX)")
-                    #         logger.error("   2. Token expired or invalid")
-                    #         logger.error("   3. App registration lacks ADX permissions")
-                    #         logger.error("   4. OBO flow configuration incorrect")
-                    #         logger.error("   5. Azure Government vs Public cloud mismatch")
-                    #     elif "403" in error_str:
-                    #         logger.error("🔍 403 Forbidden detected - permission issue")
-                    #     elif "aadsts" in error_str:
-                    #         logger.error("🔍 Azure AD error detected")
-                        
-                    #     # Don't fail here, let the actual query attempt handle the error
-                    #     logger.warning("⚠️ User impersonation test failed, but proceeding with client")
-                    
-                except Exception as e:
-                    logger.error(f"❌ Failed to create user-impersonated client: {e}")
-                    logger.error(f"   - Error type: {type(e).__name__}")
-                    raise ValueError(f"Failed to create user-impersonated ADX client: {e}")
-            else:
-                logger.info(f"♻️ Reusing existing user-impersonated client for token: {token_key}")
-            
-            return self._user_clients[token_key]
+            try:
+                credential = self._get_user_credential(user_token)
+                kcsb = KustoConnectionStringBuilder.with_azure_token_credential(
+                    self.config.cluster_url,
+                    credential
+                )
+                client = KustoClient(kcsb)
+                logger.info(f"✅ Created fresh Kusto client with user impersonation")
+                
+                return client
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to create user-impersonated client: {e}")
+                logger.error(f"   - Error type: {type(e).__name__}")
+                raise ValueError(f"Failed to create user-impersonated ADX client: {e}")
                 
         except Exception as e:
             logger.error(f"❌ Error getting Kusto client: {e}")
@@ -1174,14 +1099,3 @@ def register_adx_tools(mcp: FastMCP):
             raise ValueError(f"Failed to get cluster info: {e}")
 
     logger.info("Azure Data Explorer tools registered successfully")
-
-    @mcp.tool
-    async def kusto_clear_user_client_cache() -> Dict[str, Any]:
-        """Clear cached user impersonation Kusto clients (forces fresh token usage)."""
-        try:
-            manager = get_kusto_manager()
-            count = len(manager._user_clients)
-            manager._user_clients.clear()
-            return {"status": "cleared", "previous_entries": count, "timestamp": time.time()}
-        except Exception as e:
-            return {"status": "error", "error": str(e)}

@@ -125,23 +125,27 @@ export class MCPService {
    */  async listTools(): Promise<MCPTool[]> {
     try {
       const headers = await this.getHeaders();
-      const response = await this.http.get<MCPTool[] | MCPListToolsResponse>(
-        `${this.mcpServerUrl}/tools/list`,
+      const response = await this.http.get<any>(
+        `${this.mcpServerUrl}/tools`,
         { headers }
       ).toPromise();
 
-      // console.log('Raw tools response:', response);
+      console.log('Raw tools response:', response);
       
-      // Handle both direct array and wrapped response
-      if (Array.isArray(response)) {
-        // console.log('Received tools as direct array:', response);
+      // Handle the response format from /tools endpoint
+      // Response has: { server_info, tools_by_category, all_tools }
+      if (response && response.all_tools && Array.isArray(response.all_tools)) {
+        console.log('Received tools from all_tools array:', response.all_tools.length);
+        return response.all_tools;
+      } else if (Array.isArray(response)) {
+        console.log('Received tools as direct array:', response);
         return response;
       } else if (response && 'tools' in response) {
-        // console.log('Received tools as wrapped response:', response.tools);
+        console.log('Received tools as wrapped response:', response.tools);
         return response.tools || [];
       }
       
-      // console.log('No tools found in response');
+      console.log('No tools found in response');
       return [];
     } catch (error) {
       console.error('Error listing MCP tools:', error);
