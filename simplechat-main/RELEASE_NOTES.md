@@ -1,12 +1,160 @@
 <!-- BEGIN RELEASE_NOTES.MD BLOCK -->
 # Feature Release
 
-### **(v0.229.014)**
+### **(v0.229.063)**
 
 #### Bug Fixes
 
-##### Public Workspace Management Fixes
+*   **Admin Plugins Modal Load Fix**
+    *   Fixed issue where Admin Plugins modal would fail to load when using sidenav navigation.
+    *   **Root Cause**: JavaScript code attempted to access DOM elements that didn't exist in sidenav navigation.
+    *   **Solution**: Corrected DOM element checks to ensure compatibility with both top-nav and sidenav layouts.
+    *   **User Experience**: Admins can now access the Plugins modal reglardless of navigation style.
+    *   (Ref: `admin_plugins.js`, DOM existence checks)
 
+### **(v0.229.062)**
+
+#### Bug Fixes
+
+*   **Enhanced Citations CSP Fix**
+    *   Fixed Content Security Policy (CSP) violation that prevented enhanced citations PDF documents from being displayed in iframe modals.
+    *   **Issue**: CSP directive `frame-ancestors 'none'` blocked PDF endpoints from being embedded in iframes, causing console errors: "Refused to frame '...' because an ancestor violates the following Content Security Policy directive: 'frame-ancestors 'none''".
+    *   **Root Cause**: Enhanced citations use iframes to display PDF documents via `/api/enhanced_citations/pdf` endpoint, but the restrictive CSP policy prevented same-origin iframe embedding.
+    *   **Solution**: Changed CSP configuration from `frame-ancestors 'none'` to `frame-ancestors 'self'`, allowing same-origin framing while maintaining security against external clickjacking attacks.
+    *   **Security Impact**: No reduction in security posture - external websites still cannot embed application content, only same-origin framing is now allowed.
+    *   **Benefits**: Enhanced citations PDF modals now display correctly without CSP violations, improved user experience for document viewing.
+    *   (Ref: `config.py` SECURITY_HEADERS, `test_enhanced_citations_csp_fix.py`, CSP policy update)
+
+### **(v0.229.061)**
+
+#### Bug Fixes
+
+*   **Chat Page Top Navigation Left Sidebar Fix**
+    *   Fixed positioning and layout issues when using top navigation mode where the chat page left-hand menu was overlapping with the top navigation bar.
+    *   Created a new short sidebar template (`_sidebar_short_nav.html`) optimized for top navigation layout without brand/logo area.
+    *   Modified chat page layout to hide built-in left pane when top nav is enabled, preventing redundant navigation elements.
+    *   Implemented proper positioning calculations to account for top navigation bar height with and without classification banner.
+    *   (Ref: `_sidebar_short_nav.html`, `base.html`, `chats.html`, conditional template inclusion, layout positioning fixes)
+
+### **(v0.229.058)**
+
+#### New Features
+
+*   **Admin Left-Hand Navigation Enhancement**
+    *   Introduced an innovative dual-navigation approach for admin settings, providing both traditional top-nav tabs and a modern left-hand hierarchical navigation system.
+    *   **Key Features**: Conditional navigation that automatically detects layout preference, hierarchical structure with two-level navigation (tabs → sections), smart state management for active states and submenus.
+    *   **Comprehensive Organization**: All admin tabs now include organized sub-sections with proper section targeting for enhanced navigation.
+    *   **Benefits**: Matches conversation navigation patterns users already know, provides better organization for complex admin settings, enables bookmarkable deep links to specific sections.
+    *   (Ref: `admin_settings.html`, `_sidebar_nav.html`, `admin_sidebar_nav.js`)
+
+*   **Time-Based Logging Turnoff Feature**
+    *   Provides administrators with automatic turnoff capabilities for debug logging and file process logging to manage costs and security risks.
+    *   **Cost Management**: Prevents excessive logging costs by automatically disabling logging after specified time periods (minutes to weeks).
+    *   **Risk Mitigation**: Reduces security risks by ensuring debug logging doesn't remain enabled indefinitely.
+    *   **Configuration Options**: Supports time ranges from 1-120 minutes, 1-24 hours, 1-7 days, and 1-52 weeks for both debug logging and file processing logs.
+    *   **Background Monitoring**: Daemon thread monitors and enforces timer expiration automatically.
+    *   (Ref: `admin_settings.html`, `route_frontend_admin_settings.py`, `app.py`)
+
+*   **Comprehensive Table Support Enhancement**
+    *   Enhanced table rendering to support multiple input formats ensuring tables from AI agents or users are properly displayed as styled HTML tables.
+    *   **Format Support**: Unicode box-drawing tables (┌─┬─┐ style), markdown tables wrapped in code blocks, pipe-separated values (PSV) in code blocks, standard markdown tables.
+    *   **Processing Pipeline**: Implements preprocessing pipeline that detects and converts various table formats to standard markdown before parsing.
+    *   **Bootstrap Integration**: All generated tables automatically receive Bootstrap styling with striped rows and responsive design.
+    *   (Ref: `chat-messages.js`, table conversion functions, functional tests)
+
+*   **Public Workspace Management Enhancement**
+    *   Added "Go to Public Workspace" button to Public Workspace Management page for quick navigation from management to workspace usage.
+    *   **User Experience**: One-click navigation from management page to public workspace, automatically sets workspace as active for the user.
+    *   **Consistency**: Aligns with existing Group Workspace management functionality, provides consistent workflow between management and usage.
+    *   (Ref: `manage_public_workspace.html`, `route_frontend_public_workspaces.py`)
+
+*   **Multimedia Support Reorganization**
+    *   Reorganized Multimedia Support section from "Other" tab to "Search and Extract" tab with comprehensive Azure AI Video Indexer configuration guide.
+    *   **Enhanced Configuration**: Added detailed setup instructions modal with step-by-step account creation, API key acquisition guidelines, and troubleshooting section.
+    *   **Improved Organization**: Groups related search and extraction capabilities together, maintains all existing multimedia settings and functionality.
+    *   (Ref: `admin_settings.html`, `_video_indexer_info.html`)
+
+#### Bug Fixes
+
+### **(v0.229.058)**
+
+#### New Features
+
+*   **Admin Left-Hand Navigation Enhancement**
+    *   Introduced an innovative dual-navigation approach for admin settings, providing both traditional top-nav tabs and a modern left-hand hierarchical navigation system.
+    *   **Key Features**: Conditional navigation that automatically detects layout preference, hierarchical structure with two-level navigation (tabs → sections), smart state management for active states and submenus.
+    *   **Comprehensive Organization**: All admin tabs now include organized sub-sections with proper section targeting for enhanced navigation.
+    *   **Benefits**: Matches conversation navigation patterns users already know, provides better organization for complex admin settings, enables bookmarkable deep links to specific sections.
+    *   (Ref: `admin_settings.html`, `_sidebar_nav.html`, `admin_sidebar_nav.js`)
+
+*   **Time-Based Logging Turnoff Feature**
+    *   Provides administrators with automatic turnoff capabilities for debug logging and file process logging to manage costs and security risks.
+    *   **Cost Management**: Prevents excessive logging costs by automatically disabling logging after specified time periods (minutes to weeks).
+    *   **Risk Mitigation**: Reduces security risks by ensuring debug logging doesn't remain enabled indefinitely.
+    *   **Configuration Options**: Supports time ranges from 1-120 minutes, 1-24 hours, 1-7 days, and 1-52 weeks for both debug logging and file processing logs.
+    *   **Background Monitoring**: Daemon thread monitors and enforces timer expiration automatically.
+    *   (Ref: `admin_settings.html`, `route_frontend_admin_settings.py`, `app.py`)
+
+*   **Comprehensive Table Support Enhancement**
+    *   Enhanced table rendering to support multiple input formats ensuring tables from AI agents or users are properly displayed as styled HTML tables.
+    *   **Format Support**: Unicode box-drawing tables (┌─┬─┐ style), markdown tables wrapped in code blocks, pipe-separated values (PSV) in code blocks, standard markdown tables.
+    *   **Processing Pipeline**: Implements preprocessing pipeline that detects and converts various table formats to standard markdown before parsing.
+    *   **Bootstrap Integration**: All generated tables automatically receive Bootstrap styling with striped rows and responsive design.
+    *   (Ref: `chat-messages.js`, table conversion functions, functional tests)
+
+*   **Public Workspace Management Enhancement**
+    *   Added "Go to Public Workspace" button to Public Workspace Management page for quick navigation from management to workspace usage.
+    *   **User Experience**: One-click navigation from management page to public workspace, automatically sets workspace as active for the user.
+    *   **Consistency**: Aligns with existing Group Workspace management functionality, provides consistent workflow between management and usage.
+    *   (Ref: `manage_public_workspace.html`, `route_frontend_public_workspaces.py`)
+
+*   **Multimedia Support Reorganization**
+    *   Reorganized Multimedia Support section from "Other" tab to "Search and Extract" tab with comprehensive Azure AI Video Indexer configuration guide.
+    *   **Enhanced Configuration**: Added detailed setup instructions modal with step-by-step account creation, API key acquisition guidelines, and troubleshooting section.
+    *   **Improved Organization**: Groups related search and extraction capabilities together, maintains all existing multimedia settings and functionality.
+    *   (Ref: `admin_settings.html`, `_video_indexer_info.html`)
+
+#### Bug Fixes
+
+*   **Admin Configuration Improvements**
+    *   Addressed user feedback about admin settings organization and implemented critical improvements to reduce confusion and provide better guidance.
+    *   **Duplicate Health Check Fix**: Consolidated health check configuration in General tab, removed duplicate from Other tab, added missing form field processing.
+    *   **Tab Organization**: Reorganized tabs into logical groups (Core Settings, AI Models Group, Content Processing Group, Security, User Features, System Administration).
+    *   **Workspace Dependency Validation**: Implemented real-time JavaScript validation to guide users when workspaces are enabled without required services (Azure AI Search, Document Intelligence, Embeddings).
+    *   (Ref: `admin_settings.html`, `admin_settings.js`, `route_frontend_admin_settings.py`, `route_external_health.py`)
+
+*   **Admin Settings Tab Preservation Fix**
+    *   Fixed issue where admin settings page would redirect to "General" tab after saving, rather than preserving the active tab.
+    *   **Root Cause**: Server-side redirects lose hash fragments, and tab activation only checked URL hash on page load without restoration mechanism.
+    *   **Solution**: Implemented client-side tab preservation using sessionStorage, enhanced with dual navigation interface support (traditional tabs and sidebar navigation).
+    *   **User Experience**: Users can now save settings and remain in their current tab, reducing frustration and improving workflow efficiency.
+    *   (Ref: `admin_settings.js`, tab restoration logic, session storage implementation)
+
+*   **Workspace Scope Prompts Fix**
+    *   Fixed workspace scope selector to affect both document filtering and prompt filtering consistently.
+    *   **Issue**: Workspace scope selection only affected documents but not prompts, creating inconsistent user experience.
+    *   **Solution**: Integrated prompt loading with workspace scope selector, implemented scope-aware filtering logic (All, Personal, Group, Public), added event listeners for scope changes.
+    *   **Impact**: Consistent behavior between document and prompt filtering, improved workflow efficiency for users working within specific workspace contexts.
+    *   (Ref: `chat-prompts.js`, `chat-global.js`, scope filtering implementation)
+
+*   **External Links New Window Fix**
+    *   Fixed web links in AI responses and user messages to open in new windows/tabs instead of replacing current chat session.
+    *   **Root Cause**: External links in markdown content didn't include `target="_blank"` attribute after DOMPurify sanitization.
+    *   **Solution**: Created `addTargetBlankToExternalLinks()` utility function that identifies external links and adds proper attributes including security measures.
+    *   **Security Enhancement**: Added `rel="noopener noreferrer"` for enhanced security, maintains DOMPurify sanitization.
+    *   (Ref: `chat-utils.js`, `chat-messages.js`, external link processing)
+
+*   **Video Indexer Debug Logging Enhancement**
+    *   Enhanced Video Indexer functionality with comprehensive debug logging to help diagnose API call failures and configuration issues.
+    *   **Comprehensive Logging**: Added detailed logging for authentication, upload process, processing polling, insights extraction, chunk processing, and video deletion.
+    *   **Troubleshooting Support**: Provides detailed error information, request/response data, and step-by-step processing details for customer support.
+    *   **Integration**: Uses existing `debug_print` function with `enable_debug_logging` setting for controlled debugging without performance impact.
+    *   (Ref: `functions_authentication.py`, `functions_documents.py`, Video Indexer workflow logging)
+
+### **(v0.229.014)**
+#### Bug Fixes
+
+##### Public Workspace Management Fixes
 *   **Public Workspace Management Permission Fix**
     *   Fixed incorrect permission checking for public workspace management operations when "Require Membership to Create Public Workspaces" setting was enabled.
     *   **Issue**: Users with legitimate access to manage workspaces (Owner/Admin/DocumentManager) were incorrectly shown "Forbidden" errors when accessing management functionality.
@@ -24,8 +172,8 @@
     *   **Benefits**: Improved workspace identification, consistent with Group scope naming pattern, better navigation between workspace scopes.
     *   (Ref: `chat-documents.js`, scope label updates, dynamic workspace display)
 
+=======
 ##### User Interface and Content Rendering Fixes
-
 *   **Unicode Table Rendering Fix**
     *   Fixed issue where AI-generated tables using Unicode box-drawing characters were not rendering as proper HTML tables in the chat interface.
     *   **Problem**: AI agents (particularly ESAM Agent) generated Unicode tables that appeared as plain text instead of formatted tables.

@@ -3,6 +3,7 @@
 from config import *
 from functions_authentication import *
 from functions_public_workspaces import *
+from swagger_wrapper import swagger_route, get_auth_security
 
 def get_user_details_from_graph(user_id):
     """
@@ -51,6 +52,7 @@ def register_route_backend_public_workspaces(app):
     """
 
     @app.route("/api/public_workspaces/discover", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -80,6 +82,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify(results), 200
 
     @app.route("/api/public_workspaces", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -154,6 +157,7 @@ def register_route_backend_public_workspaces(app):
         }), 200
 
     @app.route("/api/public_workspaces", methods=["POST"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @create_public_workspace_role_required
@@ -174,6 +178,7 @@ def register_route_backend_public_workspaces(app):
             return jsonify({"error": str(ex)}), 400
 
     @app.route("/api/public_workspaces/<ws_id>", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -188,6 +193,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify(ws), 200
 
     @app.route("/api/public_workspaces/<ws_id>", methods=["PATCH", "PUT"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -217,6 +223,7 @@ def register_route_backend_public_workspaces(app):
             return jsonify({"error": str(ex)}), 400
 
     @app.route("/api/public_workspaces/<ws_id>", methods=["DELETE"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -238,6 +245,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": "Deleted"}), 200
 
     @app.route("/api/public_workspaces/setActive", methods=["PATCH"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -271,6 +279,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": f"Active set to {ws_id}"}), 200
 
     @app.route("/api/public_workspaces/<ws_id>/requests", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -297,6 +306,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify(ws.get("pendingDocumentManagers", [])), 200
 
     @app.route("/api/public_workspaces/<ws_id>/requests", methods=["POST"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -330,6 +340,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": "Requested"}), 201
 
     @app.route("/api/public_workspaces/<ws_id>/requests/<req_id>", methods=["PATCH"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -376,6 +387,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": msg}), 200
 
     @app.route("/api/public_workspaces/<ws_id>/members", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -442,6 +454,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify([m for m in results if keep(m)]), 200
 
     @app.route("/api/public_workspaces/<ws_id>/members", methods=["POST"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -485,6 +498,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": "Member added"}), 200
 
     @app.route("/api/public_workspaces/<ws_id>/members/<member_id>", methods=["DELETE"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -527,6 +541,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": "Removed"}), 200
 
     @app.route("/api/public_workspaces/<ws_id>/members/<member_id>", methods=["PATCH"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -578,6 +593,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": "Role updated"}), 200
 
     @app.route("/api/public_workspaces/<ws_id>/transferOwnership", methods=["PATCH"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -643,6 +659,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"message": "Ownership transferred"}), 200
 
     @app.route("/api/public_workspaces/<ws_id>/fileCount", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")
@@ -670,6 +687,7 @@ def register_route_backend_public_workspaces(app):
         return jsonify({"fileCount": file_count}), 200
 
     @app.route("/api/public_workspaces/<ws_id>/promptCount", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_public_workspaces")

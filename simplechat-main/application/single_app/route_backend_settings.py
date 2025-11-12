@@ -4,11 +4,13 @@ from config import *
 from functions_documents import *
 from functions_authentication import *
 from functions_settings import *
+from swagger_wrapper import swagger_route, get_auth_security
 import redis 
 
 
 def register_route_backend_settings(app):
     @app.route('/api/admin/settings/check_index_fields', methods=['POST'])
+    @swagger_route(security=get_auth_security())
     @login_required
     @admin_required
     def check_index_fields():
@@ -88,6 +90,7 @@ def register_route_backend_settings(app):
 
 
     @app.route('/api/admin/settings/fix_index_fields', methods=['POST'])
+    @swagger_route(security=get_auth_security())
     @login_required
     @admin_required
     def fix_index_fields():
@@ -167,6 +170,7 @@ def register_route_backend_settings(app):
             return jsonify({ 'error': str(e) }), 500
 
     @app.route('/api/admin/settings/create_index', methods=['POST'])
+    @swagger_route(security=get_auth_security())
     @login_required
     @admin_required
     def create_index():
@@ -235,6 +239,7 @@ def register_route_backend_settings(app):
             return jsonify({'error': f'Failed to create index: {str(e)}'}), 500
     
     @app.route('/api/admin/settings/test_connection', methods=['POST'])
+    @swagger_route(security=get_auth_security())
     @login_required
     @admin_required
     def test_connection():
@@ -614,8 +619,6 @@ def _test_azure_doc_intelligence_connection(payload):
     """Attempt to connect to Azure Form Recognizer / Document Intelligence."""
     enable_apim = payload.get('enable_apim', False)
 
-    enable_apim = payload.get('enable_apim', False)
-
     if enable_apim:
         apim_data = payload.get('apim', {})
         endpoint = apim_data.get('endpoint')
@@ -663,9 +666,13 @@ def _test_azure_doc_intelligence_connection(payload):
         )
     else:
         with open(test_file_path, 'rb') as f:
+            file_content = f.read()
+            # Use base64 format for consistency with the stable API
+            base64_source = base64.b64encode(file_content).decode('utf-8')
+            analyze_request = {"base64Source": base64_source}
             poller = document_intelligence_client.begin_analyze_document(
                 model_id="prebuilt-read",
-                document=f
+                body=analyze_request
             )
 
     max_wait_time = 600

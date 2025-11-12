@@ -14,12 +14,14 @@ from functions_settings import get_settings, enabled_required
 from functions_documents import get_document_metadata
 from functions_group import get_user_groups
 from functions_public_workspaces import get_user_visible_public_workspace_ids_from_settings
+from swagger_wrapper import swagger_route, get_auth_security
 from config import CLIENTS, storage_account_user_documents_container_name, storage_account_group_documents_container_name, storage_account_public_documents_container_name
 
 def register_enhanced_citations_routes(app):
     """Register enhanced citations routes"""
     
     @app.route("/api/enhanced_citations/image", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_enhanced_citations")
@@ -58,6 +60,7 @@ def register_enhanced_citations_routes(app):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/enhanced_citations/video", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_enhanced_citations")
@@ -96,6 +99,7 @@ def register_enhanced_citations_routes(app):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/enhanced_citations/audio", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_enhanced_citations")
@@ -134,6 +138,7 @@ def register_enhanced_citations_routes(app):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/enhanced_citations/pdf", methods=["GET"])
+    @swagger_route(security=get_auth_security())
     @login_required
     @user_required
     @enabled_required("enable_enhanced_citations")
