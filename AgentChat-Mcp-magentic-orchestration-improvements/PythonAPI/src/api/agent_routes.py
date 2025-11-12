@@ -428,6 +428,58 @@ def chat_completions():
         }), 500
 
 
+@agent_bp.route('/research/pause', methods=['POST'])
+def pause_research():
+    """Pause ongoing research."""
+    try:
+        data = request.get_json()
+        session_id = data.get('sessionId')
+        
+        if not session_id:
+            return jsonify({'error': 'sessionId required'}), 400
+        
+        if agent_system and hasattr(agent_system, 'agent_system') and hasattr(agent_system.agent_system, 'host'):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(agent_system.agent_system.host.pause_research(session_id))
+                return jsonify({'success': True, 'message': 'Research pause requested'})
+            finally:
+                loop.close()
+        
+        return jsonify({'error': 'Agent system not available'}), 503
+        
+    except Exception as e:
+        logger.error(f"Error pausing research: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@agent_bp.route('/research/summary', methods=['POST'])
+def request_summary():
+    """Request progress summary."""
+    try:
+        data = request.get_json()
+        session_id = data.get('sessionId')
+        
+        if not session_id:
+            return jsonify({'error': 'sessionId required'}), 400
+        
+        if agent_system and hasattr(agent_system, 'agent_system') and hasattr(agent_system.agent_system, 'host'):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(agent_system.agent_system.host.request_summary(session_id))
+                return jsonify({'success': True, 'message': 'Summary requested'})
+            finally:
+                loop.close()
+        
+        return jsonify({'error': 'Agent system not available'}), 503
+        
+    except Exception as e:
+        logger.error(f"Error requesting summary: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 # Cleanup function
 def cleanup_agent_system():
     """Cleanup the agent system."""

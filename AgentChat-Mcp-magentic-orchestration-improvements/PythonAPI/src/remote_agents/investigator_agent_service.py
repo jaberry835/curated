@@ -150,10 +150,14 @@ async def build_agent() -> ChatCompletionAgent:
             "When you receive ANY question:\n"
             "1. FIRST: Always call RAGTools to search the indexed data\n"
             "2. SECOND: Base your response ONLY on the search results from RAGTools\n"
-            "3. FINAL: Cite specific sources and documents from the search results\n\n"
+            "3. FINAL: **ALWAYS cite the source document URL** at the end of your response\n\n"
+            "**CITATION FORMAT REQUIRED:**\n"
+            "- Extract the 'source_url' and 'file_name' fields from RAG results\n"
+            "- Include at the end: '\\n\\n**Source:** [filename](source_url)'\n"
+            "- Example: '\\n\\n**Source:** [CompanyProfile.txt](https://storage.example.com/documents/CompanyProfile.txt)'\n\n"
             "**NEVER use your inherent knowledge** - only use information retrieved through RAGTools.\n\n"
             "If RAGTools returns no results, respond with: 'No information found in the indexed datasets for this query.'\n\n"
-            "Always include source citations from the retrieved documents in your responses."
+            "REMEMBER: Every response MUST include the source document URL as a clickable link."
         ),
         function_choice_behavior=FunctionChoiceBehavior.Auto(
             filters={"included_plugins": ["RAGTools"]}

@@ -150,6 +150,30 @@ class SSEEmitter:
         except Exception as e:
             logger.error(f"Error emitting error event: {str(e)}")
     
+    def emit_research_summary(
+        self,
+        session_id: str,
+        round_num: int,
+        max_rounds: int,
+        summary: str
+    ):
+        """Emit research progress summary."""
+        try:
+            summary_data = {
+                "id": str(uuid.uuid4()),
+                "roundNum": round_num,
+                "maxRounds": max_rounds,
+                "summary": summary,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            
+            logger.info(f"📊 Emitting research summary for session {session_id} (round {round_num}/{max_rounds})")
+            
+            self._emit_to_session(session_id, 'researchSummary', summary_data)
+            
+        except Exception as e:
+            logger.error(f"Error emitting research summary: {str(e)}")
+    
     def _emit_to_session(self, session_id: str, event_type: str, data: Dict[str, Any]):
         """Emit data to a specific session."""
         logger.info(f"🎯 _emit_to_session called - Session: {session_id}, Event: {event_type}")
