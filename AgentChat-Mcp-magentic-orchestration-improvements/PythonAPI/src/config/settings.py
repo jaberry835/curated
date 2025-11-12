@@ -98,6 +98,9 @@ class AppSettings(BaseSettings):
     # Default system settings
     DEFAULT_USER_ID: str = Field(default="system", env="DEFAULT_USER_ID")
     
+    # Research settings
+    RESEARCH_ROUND_TIME_LIMIT_SECONDS: int = Field(default=240, env="RESEARCH_ROUND_TIME_LIMIT_SECONDS")  # 4 minutes default
+    
     # Sub-configurations
     mcp: MCPSettings = MCPSettings()
     api: APISettings = APISettings()

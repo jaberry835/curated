@@ -28,11 +28,13 @@ class MultiAgentSystem:
             azure_endpoint=azure_openai_endpoint,
             azure_deployment=azure_openai_deployment,
         )
+        # Use local routes instead of separate ports - all agents now run on same app
+        base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
         self.specialist_urls: List[str] = [
-            os.getenv("DOCUMENT_AGENT_URL", "http://localhost:18081"),
-            os.getenv("ADX_AGENT_URL", "http://localhost:18082"),
-            os.getenv("INVESTIGATOR_AGENT_URL", "http://localhost:18083"),
-            os.getenv("FICTIONAL_COMPANIES_AGENT_URL", "http://localhost:18084"),
+            f"{base_url}/agents/document",
+            f"{base_url}/agents/adx",
+            f"{base_url}/agents/investigator",
+            f"{base_url}/agents/fictionalcompanies",
         ]
 
     async def initialize(self) -> bool:
