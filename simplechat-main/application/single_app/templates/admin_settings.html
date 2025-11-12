@@ -451,35 +451,31 @@
             </div>
         </div>
         
+        <!-- Hide tabs when left navigation is enabled -->
+        {% set nav_layout = user_settings.get('settings', {}).get('navLayout') %}
+        {% if not (nav_layout == 'sidebar' or (not nav_layout and app_settings.enable_left_nav_default)) %}
         <ul class="nav nav-tabs" id="adminSettingsTab" role="tablist">
+            <!-- Core Settings -->
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general"
                     type="button" role="tab" aria-controls="general" aria-selected="true">
                     General
                 </button>
             </li>
+            
+            <!-- AI Models Group -->
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="gpt-tab" data-bs-toggle="tab" data-bs-target="#gpt" type="button"
-                    role="tab" aria-controls="gpt" aria-selected="false">
-                    GPT
+                <button class="nav-link" id="ai-models-tab" data-bs-toggle="tab" data-bs-target="#ai-models"
+                    type="button" role="tab" aria-controls="ai-models" aria-selected="false">
+                    AI Models
                 </button>
             </li>
+            
+            <!-- Content Processing Group -->
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="embeddings-tab" data-bs-toggle="tab" data-bs-target="#embeddings"
-                    type="button" role="tab" aria-controls="embeddings" aria-selected="false">
-                    Embeddings
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="image-gen-tab" data-bs-toggle="tab" data-bs-target="#image-gen"
-                    type="button" role="tab" aria-controls="image-gen" aria-selected="false">
-                    Image Generation
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="scale-tab" data-bs-toggle="tab" data-bs-target="#scale"
-                    type="button" role="tab" aria-controls="scale" aria-selected="false">
-                    Scale
+                <button class="nav-link" id="search-extract-tab" data-bs-toggle="tab" data-bs-target="#search-extract"
+                    type="button" role="tab" aria-controls="search-extract" aria-selected="false">
+                    Search and Extract
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -494,135 +490,57 @@
                     Citations
                 </button>
             </li>
+            
+            <!-- Security -->
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="safety-tab" data-bs-toggle="tab" data-bs-target="#safety"
                     type="button" role="tab" aria-controls="safety" aria-selected="false">
                     Safety
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="search-extract-tab" data-bs-toggle="tab" data-bs-target="#search-extract"
-                    type="button" role="tab" aria-controls="search-extract" aria-selected="false">
-                    Search and Extract
-                </button>
-            </li>
-            <!-- Agents Admin Tab -->
+            
+            <!-- User Features -->
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="agents-tab" data-bs-toggle="tab" data-bs-target="#agents" type="button" role="tab" aria-controls="agents" aria-selected="false">
                     Agents
                 </button>
             </li>
-            <!-- Actions Admin Tab -->
+            
+            <!-- System Administration -->
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="plugins-tab" data-bs-toggle="tab" data-bs-target="#plugins" type="button" role="tab" aria-controls="plugins" aria-selected="false">
-                    Actions
+                <button class="nav-link" id="scale-tab" data-bs-toggle="tab" data-bs-target="#scale"
+                    type="button" role="tab" aria-controls="scale" aria-selected="false">
+                    Scale
                 </button>
             </li>
-            <!-- Logging Admin Tab -->
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="logging-tab" data-bs-toggle="tab" data-bs-target="#logging" type="button" role="tab" aria-controls="logging" aria-selected="false">
                     Logging
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="other-tab" data-bs-toggle="tab" data-bs-target="#other" type="button"
-                    role="tab" aria-controls="other" aria-selected="false">
-                    Other
-                </button>
-            </li>
         </ul>
+        {% endif %}
+        
         <div class="tab-content mt-3" id="adminSettingsTabContent">
-            <!-- Actions Tab Content -->
-            <div class="tab-pane fade" id="plugins" role="tabpanel" aria-labelledby="plugins-tab">
+            <!-- Agents Tab Content (Consolidated: Agents + Actions) -->
+            <div class="tab-pane fade" id="agents" role="tabpanel" aria-labelledby="agents-tab">
+                
+                <p class="text-muted">
+                    Configure AI agents and actions for enhanced functionality. Agents provide AI-driven task automation while Actions extend functionality with custom tools and integrations.
+                </p>
+                
                 <div class="alert alert-warning mb-3" role="alert">
                     <strong>Note:</strong> All changes to global agents and actions require a restart of the web app to take effect.
                 </div>
-                {% if not settings.enable_semantic_kernel %}
-                    <div class="alert alert-info">
-                        <strong>Actions are not available while agents are disabled.</strong>
-                    </div>
-                {% else %}
-                    <div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4>Global Actions</h4>
-                            <button type="button" class="btn btn-primary" id="add-plugin-btn">Add Action</button>
-                        </div>
-                        {% if settings.per_user_semantic_kernel %}
-                        <!-- Action Feature Flags -->
-                            <div class="card p-3 mb-3" id="plugin-feature-toggles">
-                                <h6 class="mb-2">Workspace Action Feature Toggles</h6>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-allow-user-plugins" name="allow_user_plugins" {% if settings.allow_user_plugins %}checked{% endif %}>
-                                    <label class="form-check-label ms-2" for="toggle-allow-user-plugins">Allow User Actions</label>
-                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow users to create and manage their own workspace-level actions/plugins for personal use."></i>
-                                </div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-allow-group-plugins" name="allow_group_plugins" {% if settings.allow_group_plugins %}checked{% endif %}>
-                                    <label class="form-check-label ms-2" for="toggle-allow-group-plugins">Allow Group Actions</label>
-                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow users to create and manage group-level actions/plugins that can be shared within workgroups."></i>
-                                </div>
-                            </div>
-                        {% endif %}
-                        
-                        <!-- Core Plugin Toggles -->
-                        <div class="card p-3 mb-3" id="core-plugin-toggles">
-                            <h6 class="mb-2">Core Action Toggles</h6>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-time-plugin" name="enable_time_plugin" {% if settings.enable_time_plugin %}checked{% endif %}>
-                                <label class="form-check-label ms-2" for="toggle-time-plugin">Enable Time Action</label>
-                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to get current date, time, and perform time-related calculations and conversions."></i>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-http-plugin" name="enable_http_plugin" {% if settings.enable_http_plugin %}checked{% endif %}>
-                                <label class="form-check-label ms-2" for="toggle-http-plugin">Enable HTTP Action</label>
-                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to make HTTP requests to websites for data retrieval and integration."></i>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-wait-plugin" name="enable_wait_plugin" {% if settings.enable_wait_plugin %}checked{% endif %}>
-                                <label class="form-check-label ms-2" for="toggle-wait-plugin">Enable Wait Action</label>
-                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to pause execution for specified time periods, useful for delays and timing control in workflows."></i>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-math-plugin" name="enable_math_plugin" {% if settings.enable_math_plugin %}checked{% endif %}>
-                                <label class="form-check-label ms-2" for="toggle-math-plugin">Enable Math Action</label>
-                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to perform mathematical calculations, solve equations, and handle complex mathematical operations."></i>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-text-plugin" name="enable_text_plugin" {% if settings.enable_text_plugin %}checked{% endif %}>
-                                <label class="form-check-label ms-2" for="toggle-text-plugin">Enable Text Action</label>
-                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to perform text processing operations like formatting, validation, and manipulation of strings and text content."></i>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-default-embedding-model-plugin" name="enable_default_embedding_model_plugin" {% if settings.enable_default_embedding_model_plugin %}checked{% endif %}>
-                                <label class="form-check-label ms-2" for="toggle-default-embedding-model-plugin">Enable Default Embedding Model Action</label>
-                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to access and use the default embedding model for text similarity and vector operations."></i>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-fact-memory-plugin" name="enable_fact_memory_plugin" {% if settings.enable_fact_memory_plugin %}checked{% endif %}>
-                                <label class="form-check-label ms-2" for="toggle-fact-memory-plugin">Enable Fact Memory Action</label>
-                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to store and retrieve facts and information across conversations for improved memory and context retention."></i>
-                            </div>
-                        </div>
-                        <table class="table table-bordered" id="plugins-table">
-                            <thead>
-                                <tr>
-                                    <th>Display Name</th>
-                                    <th>Description</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-plugins-table-body"></tbody>
-                        </table>
-                    </div>
-                {% endif %}
-            </div>
 
-
-            <!-- Agents Tab Content -->
-            <div class="tab-pane fade" id="agents" role="tabpanel" aria-labelledby="agents-tab">
-                <div class="alert alert-warning mb-3" role="alert">
-                    <strong>Note:</strong> All changes to global agents and plugins require a restart of the web app to take effect.
-                </div>
+                <!-- Agents Configuration Section -->
+                <div class="card p-3 mb-4" id="agents-configuration">
+                    <h5 class="card-title">
+                        <i class="bi bi-robot me-2"></i>Agents Configuration
+                    </h5>
+                    <p class="text-muted small">
+                        Configure AI agents powered by Semantic Kernel for task automation and orchestration.
+                    </p>
                 <div class="mb-3">
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" role="switch" id="toggle-enable-agents-agents" name="enable_semantic_kernel" {% if settings.enable_semantic_kernel %}checked{% endif %}>
@@ -722,6 +640,96 @@
                         </table>
                     </div>
                 {% endif %}
+                </div>
+
+                <!-- Actions Configuration Section -->
+                <div class="card p-3 mb-4" id="actions-configuration">
+                    <h5 class="card-title">
+                        <i class="bi bi-plugin me-2"></i>Actions Configuration
+                    </h5>
+                    <p class="text-muted small">
+                        Configure custom actions and tools to extend functionality with integrations and specialized capabilities.
+                    </p>
+
+                    {% if not settings.enable_semantic_kernel %}
+                        <div class="alert alert-info">
+                            <strong>Actions are not available while agents are disabled.</strong> Enable agents above to configure actions.
+                        </div>
+                    {% else %}
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Global Actions</h6>
+                                <button type="button" class="btn btn-primary btn-sm" id="add-plugin-btn">Add Action</button>
+                            </div>
+                            {% if settings.per_user_semantic_kernel %}
+                            <!-- Action Feature Flags -->
+                                <div class="card p-3 mb-3" id="plugin-feature-toggles">
+                                    <h6 class="mb-2">Workspace Action Feature Toggles</h6>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="toggle-allow-user-plugins" name="allow_user_plugins" {% if settings.allow_user_plugins %}checked{% endif %}>
+                                        <label class="form-check-label ms-2" for="toggle-allow-user-plugins">Allow User Actions</label>
+                                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow users to create and manage their own workspace-level actions/plugins for personal use."></i>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="toggle-allow-group-plugins" name="allow_group_plugins" {% if settings.allow_group_plugins %}checked{% endif %}>
+                                        <label class="form-check-label ms-2" for="toggle-allow-group-plugins">Allow Group Actions</label>
+                                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow users to create and manage group-level actions/plugins that can be shared within workgroups."></i>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Core Plugin Toggles -->
+                            <div class="card p-3 mb-3" id="core-plugin-toggles">
+                                <h6 class="mb-2">Core Action Toggles</h6>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-time-plugin" name="enable_time_plugin" {% if settings.enable_time_plugin %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="toggle-time-plugin">Enable Time Action</label>
+                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to get current date, time, and perform time-related calculations and conversions."></i>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-http-plugin" name="enable_http_plugin" {% if settings.enable_http_plugin %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="toggle-http-plugin">Enable HTTP Action</label>
+                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to make HTTP requests to websites for data retrieval and integration."></i>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-wait-plugin" name="enable_wait_plugin" {% if settings.enable_wait_plugin %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="toggle-wait-plugin">Enable Wait Action</label>
+                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to pause execution for specified time periods, useful for delays and timing control in workflows."></i>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-math-plugin" name="enable_math_plugin" {% if settings.enable_math_plugin %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="toggle-math-plugin">Enable Math Action</label>
+                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to perform mathematical calculations, solve equations, and handle complex mathematical operations."></i>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-text-plugin" name="enable_text_plugin" {% if settings.enable_text_plugin %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="toggle-text-plugin">Enable Text Action</label>
+                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to perform text processing operations like formatting, validation, and manipulation of strings and text content."></i>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-default-embedding-model-plugin" name="enable_default_embedding_model_plugin" {% if settings.enable_default_embedding_model_plugin %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="toggle-default-embedding-model-plugin">Enable Default Embedding Model Action</label>
+                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to access and use the default embedding model for text similarity and vector operations."></i>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-fact-memory-plugin" name="enable_fact_memory_plugin" {% if settings.enable_fact_memory_plugin %}checked{% endif %}>
+                                    <label class="form-check-label ms-2" for="toggle-fact-memory-plugin">Enable Fact Memory Action</label>
+                                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enables agents to store and retrieve facts and information across conversations for improved memory and context retention."></i>
+                                </div>
+                            </div>
+                            <table class="table table-bordered" id="plugins-table">
+                                <thead>
+                                    <tr>
+                                        <th>Display Name</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-plugins-table-body"></tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
 
 
@@ -731,8 +739,10 @@
                     Configure logging settings for monitoring, debugging, and auditing purposes. These settings control various types of logging throughout the application including application insights, debug messages, and file processing events.
                 </p>
                 
-                <div class="card p-3 mb-3">
-                    <h5>Application Insights Logging</h5>
+                <div class="card p-3 mb-3" id="application-insights-section">
+                    <h5>
+                        <i class="bi bi-graph-up me-2"></i>Application Insights Logging
+                    </h5>
                     <p class="text-muted">Enable global logging to Application Insights for all agents and orchestration events.</p>
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" role="switch" id="enable_appinsights_global_logging" name="enable_appinsights_global_logging" {% if settings.enable_appinsights_global_logging %}checked{% endif %}>
@@ -746,30 +756,117 @@
                     </div>
                 </div>
                 
-                <div class="card p-3 mb-3">
-                    <h5>Debug Logging</h5>
+                <div class="card p-3 mb-3" id="debug-logging-section">
+                    <h5>
+                        <i class="bi bi-bug me-2"></i>Debug Logging
+                    </h5>
                     <p class="text-muted">Control debug print statements across the application for development and troubleshooting.</p>
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" role="switch" id="enable_debug_logging" name="enable_debug_logging" {% if settings.enable_debug_logging %}checked{% endif %}>
+                        <input class="form-check-input" type="checkbox" role="switch" id="enable_debug_logging" name="enable_debug_logging" {% if settings.enable_debug_logging %}checked{% endif %} onchange="toggleTimeControls('debug')">
                         <label class="form-check-label ms-2" for="enable_debug_logging">
                             Enable Debug Logging
                         </label>
                         <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Toggle to enable or disable debug print statements across the application for troubleshooting and development."></i>
                     </div>
+                    
+                    <!-- Time-based turnoff controls for Debug Logging -->
+                    <div id="debug-time-controls" class="mt-3" style="{% if not settings.enable_debug_logging %}display: none;{% endif %}">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="enable_debug_logging_timer" name="enable_debug_logging_timer" {% if settings.debug_logging_timer_enabled %}checked{% endif %} onchange="toggleTimerInputs('debug')">
+                            <label class="form-check-label ms-2" for="enable_debug_logging_timer">
+                                Enable Time-based Auto Turnoff
+                            </label>
+                            <i class="bi bi-clock ms-2" data-bs-toggle="tooltip" title="Automatically disable debug logging after a specified time period to manage cost and risk."></i>
+                        </div>
+                        
+                        <div id="debug-timer-inputs" class="row g-3" style="{% if not settings.debug_logging_timer_enabled %}display: none;{% endif %}">
+                            <div class="col-md-4">
+                                <label for="debug_timer_value" class="form-label">Duration</label>
+                                <input type="number" class="form-control" id="debug_timer_value" name="debug_timer_value" min="1" max="120" value="{{ settings.debug_timer_value or 1 }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="debug_timer_unit" class="form-label">Time Unit</label>
+                                <select class="form-select" id="debug_timer_unit" name="debug_timer_unit">
+                                    <option value="minutes" {% if settings.debug_timer_unit == 'minutes' %}selected{% endif %}>Minutes (1-120)</option>
+                                    <option value="hours" {% if settings.debug_timer_unit == 'hours' %}selected{% endif %}>Hours (1-24)</option>
+                                    <option value="days" {% if settings.debug_timer_unit == 'days' %}selected{% endif %}>Days (1-7)</option>
+                                    <option value="weeks" {% if settings.debug_timer_unit == 'weeks' %}selected{% endif %}>Weeks (1-52)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Will turn off at:</label>
+                                <div id="debug-turnoff-time" class="form-control-plaintext text-info fw-bold">
+                                    {% if settings.debug_logging_turnoff_time %}
+                                        {% if settings.debug_logging_turnoff_time is string %}
+                                            {{ settings.debug_logging_turnoff_time }}
+                                        {% else %}
+                                            {{ settings.debug_logging_turnoff_time.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        {% endif %}
+                                    {% else %}
+                                        Will be calculated when saved
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="alert alert-info mt-2" role="alert">
-                        <strong>Info:</strong> This controls all DEBUG print statements throughout the application. Useful for development and troubleshooting.
+                        <strong>Info:</strong> This controls all DEBUG print statements throughout the application. Useful for development and troubleshooting. Tokens and keys will be collected during this process.
                     </div>
                 </div>
                 
-                <div class="card p-3 mb-3">
-                    <h5>File Processing Logs</h5>
+                <div class="card p-3 mb-3" id="file-processing-logs-section">
+                    <h5>
+                        <i class="bi bi-file-earmark-text me-2"></i>File Process Logging
+                    </h5>
                     <p class="text-muted">Enable logging of file processing events for debugging and auditing purposes. Logs are stored in the file_processing container in Cosmos DB.</p>
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" role="switch" id="enable_file_processing_logs" name="enable_file_processing_logs" {% if settings.enable_file_processing_logs %}checked{% endif %}>
+                        <input class="form-check-input" type="checkbox" role="switch" id="enable_file_processing_logs" name="enable_file_processing_logs" {% if settings.enable_file_processing_logs %}checked{% endif %} onchange="toggleTimeControls('file')">
                         <label class="form-check-label ms-2" for="enable_file_processing_logs">
                             Enable File Processing Logs
                         </label>
                         <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Toggle to enable or disable logging of file processing events for debugging and auditing purposes."></i>
+                    </div>
+                    
+                    <!-- Time-based turnoff controls for File Processing Logs -->
+                    <div id="file-time-controls" class="mt-3" style="{% if not settings.enable_file_processing_logs %}display: none;{% endif %}">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="enable_file_processing_logs_timer" name="enable_file_processing_logs_timer" {% if settings.file_processing_logs_timer_enabled %}checked{% endif %} onchange="toggleTimerInputs('file')">
+                            <label class="form-check-label ms-2" for="enable_file_processing_logs_timer">
+                                Enable Time-based Auto Turnoff
+                            </label>
+                            <i class="bi bi-clock ms-2" data-bs-toggle="tooltip" title="Automatically disable file processing logs after a specified time period to manage cost and risk."></i>
+                        </div>
+                        
+                        <div id="file-timer-inputs" class="row g-3" style="{% if not settings.file_processing_logs_timer_enabled %}display: none;{% endif %}">
+                            <div class="col-md-4">
+                                <label for="file_timer_value" class="form-label">Duration</label>
+                                <input type="number" class="form-control" id="file_timer_value" name="file_timer_value" min="1" max="120" value="{{ settings.file_timer_value or 1 }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="file_timer_unit" class="form-label">Time Unit</label>
+                                <select class="form-select" id="file_timer_unit" name="file_timer_unit">
+                                    <option value="minutes" {% if settings.file_timer_unit == 'minutes' %}selected{% endif %}>Minutes (1-120)</option>
+                                    <option value="hours" {% if settings.file_timer_unit == 'hours' %}selected{% endif %}>Hours (1-24)</option>
+                                    <option value="days" {% if settings.file_timer_unit == 'days' %}selected{% endif %}>Days (1-7)</option>
+                                    <option value="weeks" {% if settings.file_timer_unit == 'weeks' %}selected{% endif %}>Weeks (1-52)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Will turn off at:</label>
+                                <div id="file-turnoff-time" class="form-control-plaintext text-info fw-bold">
+                                    {% if settings.file_processing_logs_turnoff_time %}
+                                        {% if settings.file_processing_logs_turnoff_time is string %}
+                                            {{ settings.file_processing_logs_turnoff_time }}
+                                        {% else %}
+                                            {{ settings.file_processing_logs_turnoff_time.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        {% endif %}
+                                    {% else %}
+                                        Will be calculated when saved
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -779,12 +876,18 @@
                  <p class="text-muted">
                     Configure general application settings, including the application's title, logo, and landing page text.
                 </p>
-                <div class="card p-3 mb-3">
+                <div class="card p-3 mb-3" id="branding-section">
+                    <h5>
+                        <i class="bi bi-palette me-2"></i>Branding
+                    </h5>
+                    <p class="text-muted small">
+                        Configure your application's title, logo, and branding elements.
+                    </p>
                     <div class="mb-3">
                         <label for="app_title" class="form-label">Application Title</label>
                         <input type="text" class="form-control" id="app_title" name="app_title" value="{{ settings.app_title }}">
                     </div>
-                    <h5 class="mt-3">Logo Settings</h5>
+                    <h6 class="mt-3">Logo Settings</h6>
                     <div class="form-group form-check form-switch mb-3">
                         <input type="checkbox" class="form-check-input" id="show_logo" name="show_logo"
                             {% if settings.show_logo %}checked{% endif %}>
@@ -815,9 +918,11 @@
                 </div>
 
                 
-                <div class="card p-3 mb-3">
-                    <h5>Page Text (Markdown)</h5>
-                    <p class="text-muted mb-1">You can either edit the text in a Markdown editor or switch to a preview mode.</p>
+                <div class="card p-3 mb-3" id="home-page-text-section">
+                    <h5>
+                        <i class="bi bi-house me-2"></i>Home Page Text
+                    </h5>
+                    <p class="text-muted small">Configure the text content displayed on your application's home page using Markdown formatting.</p>
 
                     <!-- Alignment Selector -->
                     <div class="mb-3">
@@ -865,9 +970,11 @@
 
 
                 <!-- Dark Mode Card -->
-                <div class="card p-3 mb-3">
-                    <h5>Appearance</h5>
-                    <p class="text-muted mb-1">Configure the app appearance and theme settings.</p>
+                <div class="card p-3 mb-3" id="appearance-section">
+                    <h5>
+                        <i class="bi bi-brush me-2"></i>Appearance
+                    </h5>
+                    <p class="text-muted small">Configure the app appearance and theme settings.</p>
                     
                     <div class="mb-3">
                         <label class="form-label">Default Theme</label>
@@ -905,28 +1012,74 @@
                         <p class="text-muted small">Users can still toggle the left navigation sidebar individually from the header.</p>
                     </div>
                 </div>
-                <!-- Health Check Toggle -->
-                <div class="card p-3 mb-3">
-                    <h5>Health Check</h5>
+                <!-- Health Check Configuration -->
+                <div class="card p-3 mb-3" id="health-check-section">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">
+                            <i class="bi bi-heart-pulse me-2"></i>Health Check
+                        </h5>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#healthCheckInfoModal">
+                            <i class="bi bi-info-circle me-1"></i>Configuration Guide
+                        </button>
+                    </div>
+                    <p class="text-muted mb-3">Configure health check endpoint for external monitoring systems.</p>
+                    
+                    <!-- External Health Check -->
                     <div class="form-check form-switch mb-2">
                         <input
                             type="checkbox"
                             class="form-check-input"
-                            id="enable_health_check"
-                            name="enable_health_check"
-                            {% if settings.enable_health_check %}checked{% endif %}>
-                        <label class="form-check-label ms-2" for="enable_health_check">
-                            Enable Health Check Endpoint
+                            id="enable_external_healthcheck"
+                            name="enable_external_healthcheck"
+                            {% if settings.enable_external_healthcheck %}checked{% endif %}>
+                        <label class="form-check-label ms-2" for="enable_external_healthcheck">
+                            Enable External Health Check Endpoint (/external/healthcheck)
                         </label>
-                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enable the /health endpoint for monitoring and load balancer health checks to verify application status."></i>
+                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enable the /external/healthcheck endpoint for external monitoring systems."></i>
                     </div>
-                    <p class="text-muted mb-0">
-                        When enabled, the /health endpoint will respond to health check requests. Disable to turn off health check endpoint for this app.
+                    <p class="text-muted small mb-0">Health check endpoint for external monitoring systems that require endpoint verification.</p>
+                </div>
+
+                <!-- API Documentation Section -->
+                <div class="card p-3 mb-3" id="swagger-section">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-earmark-code me-2"></i>API Documentation
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#swaggerInfoModal">
+                                <i class="bi bi-info-circle me-1"></i>Why Enable Swagger?
+                            </button>
+                            <a href="/swagger" class="btn btn-primary btn-sm" target="_blank">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Open Swagger UI
+                            </a>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-3">Configure automatic OpenAPI/Swagger documentation for API endpoints.</p>
+                    
+                    <!-- Enable Swagger Documentation -->
+                    <div class="form-check form-switch mb-2">
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="enable_swagger"
+                            name="enable_swagger"
+                            {% if settings.enable_swagger %}checked{% endif %}>
+                        <label class="form-check-label ms-2" for="enable_swagger">
+                            Enable Swagger/OpenAPI Documentation (/swagger)
+                        </label>
+                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Enable automatic API documentation with Swagger UI interface for testing and exploring endpoints."></i>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Provides interactive API documentation, endpoint testing, and schema validation. 
+                        Useful for developers, API integration, and system troubleshooting.
                     </p>
                 </div>
                 <!-- New Classification Banner Section -->
-                <div class="card p-3 mb-3">
-                    <h5>Classification Banner</h5>
+                <div class="card p-3 mb-3" id="classification-banner-section">
+                    <h5>
+                        <i class="bi bi-shield-exclamation me-2"></i>Classification Banner
+                    </h5>
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" id="classification_banner_enabled" name="classification_banner_enabled"
                             {% if settings.classification_banner_enabled %}checked{% endif %}>
@@ -954,8 +1107,10 @@
                 </div>
 
                 <!-- External Links Section -->
-                <div class="card p-3 mb-3">
-                    <h5>External Links</h5>
+                <div class="card p-3 mb-3" id="external-links-section">
+                    <h5>
+                        <i class="bi bi-box-arrow-up-right me-2"></i>External Links
+                    </h5>
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" id="enable_external_links" name="enable_external_links"
                             {% if settings.enable_external_links %}checked{% endif %}>
@@ -1004,14 +1159,51 @@
                         <input type="hidden" name="external_links_json" id="external_links_json">
                     </div>
                 </div>
+
+                <!-- System Settings Section -->
+                <div class="card p-3 mb-3" id="system-settings-section">
+                    <h5>
+                        <i class="bi bi-gear-fill me-2"></i>System Settings
+                    </h5>
+                    <p class="text-muted">
+                        System-level settings that control application behavior, including file size limits, conversation history, 
+                        and default prompts.
+                    </p>
+                    <div class="mb-3">
+                        <label for="max_file_size_mb" class="form-label">Maximum File Size (MB)</label>
+                        <input type="number" class="form-control" id="max_file_size_mb" name="max_file_size_mb"
+                            value="{{ settings.max_file_size_mb }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="conversation_history_limit" class="form-label">
+                            Conversation History Limit
+                        </label>
+                        <input type="number" class="form-control" id="conversation_history_limit"
+                            name="conversation_history_limit" value="{{ settings.conversation_history_limit }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="default_system_prompt" class="form-label">Default System Prompt</label>
+                        <textarea class="form-control" id="default_system_prompt" name="default_system_prompt"
+                            rows="5">{{ settings.default_system_prompt }}</textarea>
+                    </div>
+                </div>
             </div>
 
             
-            <div class="tab-pane fade" id="gpt" role="tabpanel" aria-labelledby="gpt-tab">
+            <div class="tab-pane fade" id="ai-models" role="tabpanel" aria-labelledby="ai-models-tab">
                 
-                 <p class="text-muted">
-                    Configure your GPT model settings. These are used for generating AI text responses.
+                <p class="text-muted">
+                    Configure all AI model settings including GPT for text generation, embeddings for semantic search, and image generation capabilities.
                 </p>
+
+                <!-- GPT Configuration Section -->
+                <div class="card p-3 mb-4" id="gpt-configuration">
+                    <h5 class="card-title">
+                        <i class="bi bi-chat-text me-2"></i>GPT Configuration
+                    </h5>
+                    <p class="text-muted small">
+                        Configure your GPT model settings. These are used for generating AI text responses.
+                    </p>
 
                 <div class="form-group form-check form-switch mb-3 d-flex align-items-center">
                     <input type="checkbox" class="form-check-input me-2" id="enable_gpt_apim" name="enable_gpt_apim" {%
@@ -1139,18 +1331,20 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn btn-secondary" id="test_gpt_button">
+                <button type="button" class="btn btn-secondary mt-3" id="test_gpt_button">
                     Test GPT Connection
                 </button>
                 <div id="test_gpt_result" class="mt-2"></div>
-            </div>
+                </div>
 
-            
-            <div class="tab-pane fade" id="embeddings" role="tabpanel" aria-labelledby="embeddings-tab">
-                
-                 <p class="text-muted">
-                    Configure your embeddings settings. These are used for semantic search, knowledge-base lookups, etc.
-                </p>
+                <!-- Embeddings Configuration Section -->
+                <div class="card p-3 mb-4" id="embeddings-configuration">
+                    <h5 class="card-title">
+                        <i class="bi bi-vector-pen me-2"></i>Embeddings Configuration
+                    </h5>
+                    <p class="text-muted small">
+                        Configure your embeddings settings. These are used for semantic search, knowledge-base lookups, etc.
+                    </p>
 
                 <div class="form-group form-check form-switch mb-3 d-flex align-items-center">
                     <input type="checkbox" class="form-check-input me-2" id="enable_embedding_apim"
@@ -1282,18 +1476,20 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn btn-secondary" id="test_embedding_button">
-                    Test Embeddings Connection
+                <button type="button" class="btn btn-secondary mt-3" id="test_embedding_button">
+                    Test Embedding Connection
                 </button>
                 <div id="test_embedding_result" class="mt-2"></div>
-            </div>
+                </div>
 
-            
-            <div class="tab-pane fade" id="image-gen" role="tabpanel" aria-labelledby="image-gen-tab">
-                
-                <p class="text-muted">
-                    Configure image generation settings. Enable/disable, set endpoints, and choose a model.
-                </p>
+                <!-- Image Generation Configuration Section -->
+                <div class="card p-3 mb-4" id="image-generation-configuration">
+                    <h5 class="card-title">
+                        <i class="bi bi-image me-2"></i>Image Generation Configuration
+                    </h5>
+                    <p class="text-muted small">
+                        Configure image generation settings. Enable/disable, set endpoints, and choose a model.
+                    </p>
 
                 <div class="form-group form-check form-switch mb-3">
                     <input type="checkbox" class="form-check-input" id="enable_image_generation"
@@ -1446,14 +1642,17 @@
                     Test Image Connection
                 </button>
                 <div id="test_image_result" class="mt-2"></div>
+                </div>
             </div>
 
             <div class="tab-pane fade" id="scale" role="tabpanel" aria-labelledby="scale-tab">
                 <p class="text-muted">
                     Configure Redis cache to improve enterprise scale and performance by caching session data. Enabling Redis allows you to horizontally scale your application across multiple instances without losing session data.
                 </p>
-                <div class="card p-3 mb-3">
-                    <h5>Redis Cache</h5>
+                <div class="card p-3 mb-3" id="redis-cache-section">
+                    <h5>
+                        <i class="bi bi-database me-2"></i>Redis Cache
+                    </h5>
                     <p class="text-muted">
                         Enable Redis Cache to store session data in a distributed cache. This is recommended for production and multi-instance deployments.
                     </p>
@@ -1497,10 +1696,12 @@
                     </div>
                 </div>
 
-                <!-- Authentication & Redirect Settings Card -->
-                <div class="card p-3 mb-3">
+                <!-- Front Door Configuration Card -->
+                <div class="card p-3 mb-3" id="front-door-section">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="mb-0">Authentication & Redirect Settings</h5>
+                        <h5 class="mb-0">
+                            <i class="bi bi-globe me-2"></i>Front Door
+                        </h5>
                         <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#frontDoorInfoModal">
                             <i class="bi bi-info-circle me-1"></i>Configuration Guide
                         </button>
@@ -1544,9 +1745,10 @@
                 </p>
 
                 
-                <div class="card mb-3 p-3">
-                    
-                    <h5>Enable Personal Workspaces</h5>
+                <div class="card mb-3 p-3" id="personal-workspaces-section">
+                    <h5>
+                        <i class="bi bi-person me-2"></i>Personal Workspaces
+                    </h5>
                     <p class="text-muted">
                         Turn this on to allow access and management of your personal workspace.
                     </p>
@@ -1564,9 +1766,10 @@
                 </div>
 
                
-               <div class="card mb-3 p-3">
-                    
-                    <h5>Enable Group Workspaces</h5>
+               <div class="card mb-3 p-3" id="group-workspaces-section">
+                    <h5>
+                        <i class="bi bi-people me-2"></i>Group Workspaces
+                    </h5>
                     <p class="text-muted">
                         Turn this on to allow access and management of group workspaces, as well as group collaboration features.
                     </p>
@@ -1602,9 +1805,10 @@
                     
                 </div>
 
-                <div class="card mb-3 p-3">
-                    
-                    <h5>Enable Public Workspaces</h5>
+                <div class="card mb-3 p-3" id="public-workspaces-section">
+                    <h5>
+                        <i class="bi bi-globe me-2"></i>Public Workspaces
+                    </h5>
                     <p class="text-muted">
                         Turn this on to enable public workspaces that are visible to everyone in the organization.
                     </p>
@@ -1639,9 +1843,10 @@
                     
                 </div>
 
-                <div class="card mb-3 p-3">
-                    
-                    <h5>Enable File Sharing</h5>
+                <div class="card mb-3 p-3" id="file-sharing-section">
+                    <h5>
+                        <i class="bi bi-share me-2"></i>File Sharing
+                    </h5>
                     <p class="text-muted">
                         Turn this on to enable file sharing capabilities between users and workspaces.
                     </p>
@@ -1658,167 +1863,10 @@
                     </div>
                 </div>
 
-                <div class="card mb-3 p-3">
-                    
-                    <h5>Multimedia Support</h5>
-                    <p class="text-muted mb-2">
-                        Support video and audio file upload for transcription, indexing, and embedding.
-                    </p>
-
-                    
-                    <div class="form-group form-check form-switch mb-3">
-                        <input
-                            type="checkbox"
-                            class="form-check-input"
-                            id="enable_video_file_support"
-                            name="enable_video_file_support"
-                            {% if settings.enable_video_file_support %}checked{% endif %}
-                        >
-                        <label class="form-check-label ms-2" for="enable_video_file_support">
-                            Enable Video File Support
-                        </label>
-                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow video file uploads with automatic transcription and indexing for AI-powered content search and analysis."></i>
-                    </div>
-
-                    <div id="video_indexer_settings" class="card mb-3 p-3"
-                            {% if not settings.enable_video_file_support %}style="display: none;"{% endif %}>
-                        <h5>Video Indexer Settings</h5>
-                        <p class="text-muted">Configure Azure Video Indexer for transcription & indexing.</p>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_endpoint" class="form-label">Endpoint</label>
-                            <input type="text" class="form-control"
-                                id="video_indexer_endpoint" name="video_indexer_endpoint"
-                                value="{{ settings.video_indexer_endpoint or 'https://api.videoindexer.ai' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_arm_api_version" class="form-label">ARM API Version</label>
-                            <input type="text" class="form-control"
-                                id="video_indexer_arm_api_version" name="video_indexer_arm_api_version"
-                                value="{{ settings.video_indexer_arm_api_version or '2021-11-10-preview' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_location" class="form-label">Location</label>
-                            <input type="text" class="form-control"
-                                id="video_indexer_location" name="video_indexer_location"
-                                value="{{ settings.video_indexer_location or '' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_account_id" class="form-label">Account ID</label>
-                            <input type="text" class="form-control"
-                                id="video_indexer_account_id" name="video_indexer_account_id"
-                                value="{{ settings.video_indexer_account_id or '' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_api_key" class="form-label">API Key</label>
-                            <div class="input-group">
-                            <input type="password" class="form-control"
-                                    id="video_indexer_api_key" name="video_indexer_api_key"
-                                    value="{{ settings.video_indexer_api_key or '' }}">
-                            <button type="button" class="btn btn-outline-secondary"
-                                    id="toggle_video_indexer_api_key">Show</button>
-                        </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_resource_group" class="form-label">Resource Group</label>
-                            <input type="text" class="form-control"
-                                id="video_indexer_resource_group" name="video_indexer_resource_group"
-                                value="{{ settings.video_indexer_resource_group or '' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_subscription_id" class="form-label">Subscription ID</label>
-                            <input type="text" class="form-control"
-                                id="video_indexer_subscription_id" name="video_indexer_subscription_id"
-                                value="{{ settings.video_indexer_subscription_id or '' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_indexer_account_name" class="form-label">Account Name</label>
-                            <input type="text" class="form-control"
-                                id="video_indexer_account_name" name="video_indexer_account_name"
-                                value="{{ settings.video_indexer_account_name or '' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="video_index_timeout" class="form-label">Timeout (seconds)</label>
-                            <input type="number" class="form-control"
-                                id="video_index_timeout" name="video_index_timeout"
-                                value="{{ settings.video_index_timeout or 600 }}">
-                        </div>
-                    </div>
-
-                    <div class="form-group form-check form-switch mb-3">
-                        <input
-                            type="checkbox"
-                            class="form-check-input"
-                            id="enable_audio_file_support"
-                            name="enable_audio_file_support"
-                            {% if settings.enable_audio_file_support %}checked{% endif %}
-                        >
-                        <label class="form-check-label ms-2" for="enable_audio_file_support">
-                            Enable Audio File Support
-                        </label>
-                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow audio file uploads with automatic transcription and indexing for AI-powered content search and analysis."></i>
-                    </div>
-
-                    <div id="audio_service_settings" class="card mb-3 p-3"
-                            {% if not settings.enable_audio_file_support %}style="display: none;"{% endif %}>
-                        <h5>Speech Service Settings</h5>
-                        <p class="text-muted">Configure Azure Speech Service for audio transcription & embedding.</p>
-
-                        <div class="mb-3">
-                            <label for="speech_service_endpoint" class="form-label">Endpoint</label>
-                            <input type="text" class="form-control"
-                                id="speech_service_endpoint" name="speech_service_endpoint"
-                                value="{{ settings.speech_service_endpoint or '' }}"
-                                placeholder="https://<location>.cognitiveservices.azure.<com or us>/">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="speech_service_location" class="form-label">Location</label>
-                            <input type="text" class="form-control"
-                                id="speech_service_location" name="speech_service_location"
-                                value="{{ settings.speech_service_location or '' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="speech_service_locale" class="form-label">Locale</label>
-                            <input type="text" class="form-control"
-                                id="speech_service_locale" name="speech_service_locale"
-                                value="{{ settings.speech_service_locale or '' }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="speech_service_key" class="form-label">API Key</label>
-                            <div class="input-group">
-                            <input type="password" class="form-control"
-                                    id="speech_service_key" name="speech_service_key"
-                                    value="{{ settings.speech_service_key or '' }}">
-                            <button type="button" class="btn btn-outline-secondary"
-                                    id="toggle_speech_service_key">Show</button>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <p class="mt-2 mb-0">
-                        <small class="text-muted">
-                            <a href="#citation" onclick="switchTab(event, 'citation-tab')">
-                                Enhanced Citations
-                            </a>
-                             will dramatically improve the citation experience for video and audio files.
-                        </small>
-                    </p>
-                </div>
-
-                <div class="card mb-3 p-3">
-                    <h5>Metadata Extraction</h5>
+                <div class="card mb-3 p-3" id="metadata-extraction-section">
+                    <h5>
+                        <i class="bi bi-file-earmark-code me-2"></i>Metadata Extraction
+                    </h5>
                     <p class="text-muted">
                       Enable this to automatically parse and store file metadata for advanced indexing and search.
                     </p>
@@ -1861,8 +1909,10 @@
                   
 
                 
-                <div class="card mb-3 p-3">
-                    <h5>Document Classification</h5>
+                <div class="card mb-3 p-3" id="document-classification-section">
+                    <h5>
+                        <i class="bi bi-tags me-2"></i>Document Classification
+                    </h5>
                     <p class="text-muted">
                         Enable this feature to allow users to classify documents uploaded to their workspaces using predefined categories.
                     </p>
@@ -1914,8 +1964,10 @@
                 </p>
 
                 
-                <div class="card p-3 mb-3">
-                    <h5>Standard Citations</h5>
+                <div class="card p-3 mb-3" id="standard-citations-section">
+                    <h5>
+                        <i class="bi bi-quote me-2"></i>Standard Citations
+                    </h5>
                     <p class="text-muted">
                         Standard citations is always enabled for both Your Workspace and Group Workspace.
                     </p>
@@ -1925,8 +1977,10 @@
                 </div>
 
                 
-                <div class="card p-3">
-                    <h5>Enhanced Citations</h5>
+                <div class="card p-3" id="enhanced-citations-section">
+                    <h5>
+                        <i class="bi bi-star me-2"></i>Enhanced Citations
+                    </h5>
                     <p class="text-muted mb-2">
                         Enable Enhanced Citation to store files in a Storage Account,
                         and show direct references (Preview feature, files are saved to storage, presentation 
@@ -2085,9 +2139,10 @@
                     messages will be sent to the safety endpoint for analysis. If User Feedback is enabled, users will see
                     thumbs up/down to provide feedback on AI responses.
                 </p>
-                <div class="card p-3 mb-3">
-                    
-                    <h5>Content Safety</h5>
+                <div class="card p-3 mb-3" id="content-safety-section">
+                    <h5>
+                        <i class="bi bi-shield-exclamation me-2"></i>Content Safety
+                    </h5>
                     <p class="text-muted">Enable content safety to filter out inappropriate content.</p>
                     <div class="form-group form-check form-switch mb-3">
                         <input
@@ -2219,8 +2274,10 @@
                 </div>
 
                 
-                <div class="card p-3 mb-3">
-                    <h5>User Feedback</h5>
+                <div class="card p-3 mb-3" id="user-feedback-section">
+                    <h5>
+                        <i class="bi bi-chat-square-heart me-2"></i>User Feedback
+                    </h5>
                     <p class="text-muted">Enable user feedback (thumbs up/down) for AI responses.</p>
                     <div class="form-group form-check form-switch mb-3">
                         <input
@@ -2238,8 +2295,10 @@
                 </div>
                 
                 
-                <div class="card p-3 mb-3">
-                    <h5>Admin Access Permissions</h5>
+                <div class="card p-3 mb-3" id="permissions-section">
+                    <h5>
+                        <i class="bi bi-person-check me-2"></i>Permissions
+                    </h5>
                     <p class="text-muted">Control which users can access specific administrative views related to safety and feedback.</p>
 
                     
@@ -2277,8 +2336,10 @@
                 
                 
                 
-                <div class="card p-3 mb-3">
-                    <h5>Conversation Archiving</h5>
+                <div class="card p-3 mb-3" id="conversation-archiving-section">
+                    <h5>
+                        <i class="bi bi-archive me-2"></i>Conversation Archiving
+                    </h5>
                     <p class="text-muted">When enabled, conversation deletions will be archived instead of permanently deleted.</p>
                     <div class="form-group form-check form-switch mb-3">
                         <input
@@ -2300,12 +2361,12 @@
             <div class="tab-pane fade" id="search-extract" role="tabpanel" aria-labelledby="search-extract-tab">
                 
                  <p class="text-muted">
-                    Configure Azure AI Search and Document Intelligence settings.
+                    Configure Azure AI Search, Document Intelligence, and multimedia support settings.
                 </p>
 
                 
-                <div class="card p-3 mb-3">
-                    <h5>Azure AI Search</h5>
+                <div class="card p-3 mb-3" id="azure-ai-search-section">
+                    <h5><i class="bi bi-search me-2"></i>Azure AI Search</h5>
                     <p class="text-muted">
                         Configure Azure AI Search settings.
                     </p>
@@ -2421,8 +2482,8 @@
                 </div>
 
                 
-                <div class="card p-3 mb-3">
-                    <h5>Document Intelligence</h5>
+                <div class="card p-3 mb-3" id="document-intelligence-section">
+                    <h5><i class="bi bi-file-earmark-text me-2"></i>Document Intelligence</h5>
                     <p class="text-muted">
                         Configure Azure Document Intelligence settings.
                     </p>
@@ -2540,75 +2601,172 @@
                         <div id="test_azure_doc_intelligence_result" class="mt-2"></div>
                     </div>
                 </div>
-            </div>
 
-            
-            <div class="tab-pane fade" id="other" role="tabpanel" aria-labelledby="other-tab">
-                
-                 <p class="text-muted">
-                    Miscellaneous or rarely changed settings, such as maximum file size, conversation history limits,
-                    etc.
-                </p>
-                <div class="card p-3 mb-3">
-                    <div class="mb-3">
-                        <label for="max_file_size_mb" class="form-label">Maximum File Size (MB)</label>
-                        <input type="number" class="form-control" id="max_file_size_mb" name="max_file_size_mb"
-                            value="{{ settings.max_file_size_mb }}">
+                <!-- Multimedia Support Section -->
+                <div class="card p-3 mb-3" id="multimedia-support-section">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0"><i class="bi bi-play-circle me-2"></i>Multimedia Support</h5>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#videoIndexerInfoModal">
+                            <i class="bi bi-info-circle me-1"></i>Configuration Guide
+                        </button>
                     </div>
-                    <div class="mb-3">
-                        <label for="conversation_history_limit" class="form-label">
-                            Conversation History Limit
-                        </label>
-                        <input type="number" class="form-control" id="conversation_history_limit"
-                            name="conversation_history_limit" value="{{ settings.conversation_history_limit }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="default_system_prompt" class="form-label">Default System Prompt</label>
-                        <textarea class="form-control" id="default_system_prompt" name="default_system_prompt"
-                            rows="5">{{ settings.default_system_prompt }}</textarea>
-                    </div>
-
-
-                </div>
-
-                <div class="card mb-3 p-3">
-                    <h5>External Health Check</h5>
-                    <p class="text-muted mb-2">
-                        Enable or disable the /external/healthcheck endpoint for external health monitoring.
+                    <p class="text-muted mb-3">
+                        Support video and audio file upload for transcription, indexing, and embedding.
                     </p>
+
+                    <!-- Video File Support -->
                     <div class="form-group form-check form-switch mb-3">
                         <input
                             type="checkbox"
                             class="form-check-input"
-                            id="enable_external_healthcheck"
-                            name="enable_external_healthcheck"
-                            {% if settings.enable_external_healthcheck %}checked{% endif %}
+                            id="enable_video_file_support"
+                            name="enable_video_file_support"
+                            {% if settings.enable_video_file_support %}checked{% endif %}
                         >
-                        <label class="form-check-label ms-2" for="enable_external_healthcheck">
-                            Enable External Health Check Endpoint
+                        <label class="form-check-label ms-2" for="enable_video_file_support">
+                            Enable Video File Support
                         </label>
-                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Provide a public health check endpoint at /external/healthcheck for external monitoring systems to verify application status."></i>
+                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow video file uploads with automatic transcription and indexing for AI-powered content search and analysis."></i>
                     </div>
-                    <div class="card mb-3 p-3">
-                        <h5>External Health Check</h5>
-                        <p class="text-muted mb-2">
-                            Enable or disable the /external/healthcheck endpoint for external health monitoring.
-                        </p>
-                        <div class="form-group form-check form-switch mb-3">
-                            <input
-                                type="checkbox"
-                                class="form-check-input"
-                                id="enable_external_healthcheck"
-                                name="enable_external_healthcheck"
-                                {% if settings.enable_external_healthcheck %}checked{% endif %}
-                            >
-                            <label class="form-check-label ms-2" for="enable_external_healthcheck">
-                                Enable External Health Check Endpoint
-                            </label>
+
+                    <div id="video_indexer_settings" class="card mb-3 p-3"
+                            {% if not settings.enable_video_file_support %}style="display: none;"{% endif %}>
+                        <h5>Video Indexer Settings</h5>
+                        <p class="text-muted">Configure Azure Video Indexer for transcription & indexing.</p>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_endpoint" class="form-label">Endpoint</label>
+                            <input type="text" class="form-control"
+                                id="video_indexer_endpoint" name="video_indexer_endpoint"
+                                value="{{ settings.video_indexer_endpoint or 'https://api.videoindexer.ai' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_arm_api_version" class="form-label">ARM API Version</label>
+                            <input type="text" class="form-control"
+                                id="video_indexer_arm_api_version" name="video_indexer_arm_api_version"
+                                value="{{ settings.video_indexer_arm_api_version or '2021-11-10-preview' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_location" class="form-label">Location</label>
+                            <input type="text" class="form-control"
+                                id="video_indexer_location" name="video_indexer_location"
+                                value="{{ settings.video_indexer_location or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_account_id" class="form-label">Account ID</label>
+                            <input type="text" class="form-control"
+                                id="video_indexer_account_id" name="video_indexer_account_id"
+                                value="{{ settings.video_indexer_account_id or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_api_key" class="form-label">API Key</label>
+                            <div class="input-group">
+                            <input type="password" class="form-control"
+                                    id="video_indexer_api_key" name="video_indexer_api_key"
+                                    value="{{ settings.video_indexer_api_key or '' }}">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    id="toggle_video_indexer_api_key">Show</button>
+                        </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_resource_group" class="form-label">Resource Group</label>
+                            <input type="text" class="form-control"
+                                id="video_indexer_resource_group" name="video_indexer_resource_group"
+                                value="{{ settings.video_indexer_resource_group or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_subscription_id" class="form-label">Subscription ID</label>
+                            <input type="text" class="form-control"
+                                id="video_indexer_subscription_id" name="video_indexer_subscription_id"
+                                value="{{ settings.video_indexer_subscription_id or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_indexer_account_name" class="form-label">Account Name</label>
+                            <input type="text" class="form-control"
+                                id="video_indexer_account_name" name="video_indexer_account_name"
+                                value="{{ settings.video_indexer_account_name or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="video_index_timeout" class="form-label">Timeout (seconds)</label>
+                            <input type="number" class="form-control"
+                                id="video_index_timeout" name="video_index_timeout"
+                                value="{{ settings.video_index_timeout or 600 }}">
                         </div>
                     </div>
+
+                    <!-- Audio File Support -->
+                    <div class="form-group form-check form-switch mb-3">
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="enable_audio_file_support"
+                            name="enable_audio_file_support"
+                            {% if settings.enable_audio_file_support %}checked{% endif %}
+                        >
+                        <label class="form-check-label ms-2" for="enable_audio_file_support">
+                            Enable Audio File Support
+                        </label>
+                        <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" title="Allow audio file uploads with automatic transcription and indexing for AI-powered content search and analysis."></i>
+                    </div>
+
+                    <div id="audio_service_settings" class="card mb-3 p-3"
+                            {% if not settings.enable_audio_file_support %}style="display: none;"{% endif %}>
+                        <h5>Speech Service Settings</h5>
+                        <p class="text-muted">Configure Azure Speech Service for audio transcription & embedding.</p>
+
+                        <div class="mb-3">
+                            <label for="speech_service_endpoint" class="form-label">Endpoint</label>
+                            <input type="text" class="form-control"
+                                id="speech_service_endpoint" name="speech_service_endpoint"
+                                value="{{ settings.speech_service_endpoint or '' }}"
+                                placeholder="https://<location>.cognitiveservices.azure.<com or us>/">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="speech_service_location" class="form-label">Location</label>
+                            <input type="text" class="form-control"
+                                id="speech_service_location" name="speech_service_location"
+                                value="{{ settings.speech_service_location or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="speech_service_locale" class="form-label">Locale</label>
+                            <input type="text" class="form-control"
+                                id="speech_service_locale" name="speech_service_locale"
+                                value="{{ settings.speech_service_locale or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="speech_service_key" class="form-label">API Key</label>
+                            <div class="input-group">
+                            <input type="password" class="form-control"
+                                    id="speech_service_key" name="speech_service_key"
+                                    value="{{ settings.speech_service_key or '' }}">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    id="toggle_speech_service_key">Show</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="mt-2 mb-0">
+                        <small class="text-muted">
+                            <a href="#citation" onclick="switchTab(event, 'citation-tab')">
+                                Enhanced Citations
+                            </a>
+                             will dramatically improve the citation experience for video and audio files.
+                        </small>
+                    </p>
                 </div>
             </div>
+
         </div> 
     </form>
     
@@ -2626,6 +2784,71 @@
 
         <!-- Front Door Info Modal -->
         {% include '_front_door_info.html' %}
+
+        <!-- Health Check Info Modal -->
+        {% include '_health_check_info.html' %}
+
+        <!-- Swagger Info Modal -->
+        <div class="modal fade" id="swaggerInfoModal" tabindex="-1" aria-labelledby="swaggerInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="swaggerInfoModalLabel">
+                            <i class="bi bi-file-earmark-code me-2"></i>Why Enable Swagger API Documentation?
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-lightbulb me-2"></i>
+                            <strong>Swagger/OpenAPI provides automatic, interactive API documentation</strong> for all your application endpoints.
+                        </div>
+                        
+                        <h6><i class="bi bi-check-circle-fill text-success me-2"></i>Benefits of Enabling Swagger:</h6>
+                        <ul class="mb-4">
+                            <li><strong>Interactive Testing:</strong> Test API endpoints directly from the browser interface</li>
+                            <li><strong>Automatic Documentation:</strong> Self-updating docs as you add/modify routes</li>
+                            <li><strong>Schema Validation:</strong> Ensures request/response formats are correct</li>
+                            <li><strong>Developer Productivity:</strong> Faster development and debugging</li>
+                            <li><strong>Integration Support:</strong> Easy API discovery for external integrations</li>
+                            <li><strong>Security Visibility:</strong> Clear view of authentication requirements</li>
+                        </ul>
+                        
+                        <h6><i class="bi bi-info-circle-fill text-primary me-2"></i>What You Get:</h6>
+                        <ul class="mb-4">
+                            <li><code>/swagger</code> - Interactive Swagger UI for testing endpoints</li>
+                            <li><code>/swagger.json</code> - OpenAPI 3.0 specification in JSON format</li>
+                            <li>Automatic route discovery and documentation</li>
+                            <li>Built-in search and filtering capabilities</li>
+                            <li>Response schema validation and examples</li>
+                        </ul>
+                        
+                        <h6><i class="bi bi-shield-check-fill text-warning me-2"></i>Security Considerations:</h6>
+                        <ul class="mb-3">
+                            <li><strong>Authentication Required:</strong> Swagger UI requires admin login</li>
+                            <li><strong>Rate Limited:</strong> Built-in protection against API discovery attacks</li>
+                            <li><strong>Internal Use:</strong> Best used by developers and system administrators</li>
+                            <li><strong>Production Ready:</strong> Safe for production environments with proper access controls</li>
+                        </ul>
+                        
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Recommendation:</strong> Enable in development/testing environments. 
+                            In production, consider limiting access to admin users only.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <a href="/swagger" class="btn btn-primary" target="_blank">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Open Swagger UI
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Indexer Info Modal -->
+        {% include '_video_indexer_info.html' %}
     </div>
 </div>
 {% endblock %}
@@ -2762,6 +2985,7 @@
 
 </script>
 <script type="module" src="{{ url_for('static', filename='js/admin/admin_settings.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/admin/admin_sidebar_nav.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/plugin_modal_stepper.js') }}"></script>
 {% if settings.enable_semantic_kernel %}
 <script type="module" src="{{ url_for('static', filename='js/admin/admin_plugins.js') }}"></script>
@@ -2967,6 +3191,81 @@
         // Submit the form
         document.getElementById('admin-settings-form').submit();
     }
+
+    // Time-based turnoff functionality
+    function toggleTimeControls(type) {
+        const mainToggle = document.getElementById(`enable_${type}_${type === 'debug' ? 'logging' : 'processing_logs'}`);
+        const timeControls = document.getElementById(`${type}-time-controls`);
+        
+        if (timeControls) {
+            timeControls.style.display = mainToggle.checked ? 'block' : 'none';
+        }
+    }
+
+    function toggleTimerInputs(type) {
+        const timerToggle = document.getElementById(`enable_${type}_${type === 'debug' ? 'logging' : 'processing_logs'}_timer`);
+        const timerInputs = document.getElementById(`${type}-timer-inputs`);
+        
+        if (timerInputs) {
+            timerInputs.style.display = timerToggle.checked ? 'block' : 'none';
+        }
+        
+        // Update the max values based on selected unit
+        updateTimerLimits(type);
+    }
+
+    function updateTimerLimits(type) {
+        const unitSelect = document.getElementById(`${type}_timer_unit`);
+        const valueInput = document.getElementById(`${type}_timer_value`);
+        
+        if (unitSelect && valueInput) {
+            const unit = unitSelect.value;
+            let max = 1;
+            
+            switch(unit) {
+                case 'minutes':
+                    max = 120;
+                    break;
+                case 'hours':
+                    max = 24;
+                    break;
+                case 'days':
+                    max = 7;
+                    break;
+                case 'weeks':
+                    max = 52;
+                    break;
+            }
+            
+            valueInput.max = max;
+            if (parseInt(valueInput.value) > max) {
+                valueInput.value = max;
+            }
+            if (parseInt(valueInput.value) < 1) {
+                valueInput.value = 1;
+            }
+        }
+    }
+
+    // Add event listeners when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add change listeners for timer unit dropdowns
+        ['debug', 'file'].forEach(type => {
+            const unitSelect = document.getElementById(`${type}_timer_unit`);
+            if (unitSelect) {
+                unitSelect.addEventListener('change', () => updateTimerLimits(type));
+            }
+            
+            const valueInput = document.getElementById(`${type}_timer_value`);
+            if (valueInput) {
+                valueInput.addEventListener('input', () => updateTimerLimits(type));
+            }
+        });
+        
+        // Initialize timer limits
+        updateTimerLimits('debug');
+        updateTimerLimits('file');
+    });
 
 </script>
 {% endblock %}

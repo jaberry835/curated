@@ -5,6 +5,8 @@ from functions_documents import *
 from functions_authentication import *
 from functions_settings import *
 from functions_logging import *
+from swagger_wrapper import swagger_route, get_auth_security
+from datetime import datetime, timedelta
 
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and \
@@ -12,6 +14,7 @@ def allowed_file(filename, allowed_extensions):
 
 def register_route_frontend_admin_settings(app):
     @app.route('/admin/settings', methods=['GET', 'POST'])
+    @swagger_route(security=get_auth_security())
     @login_required
     @admin_required
     def admin_settings():
@@ -72,6 +75,10 @@ def register_route_frontend_admin_settings(app):
             settings['per_user_semantic_kernel'] = False
         if 'enable_semantic_kernel' not in settings:
             settings['enable_semantic_kernel'] = False
+        
+        # --- Add default for swagger documentation ---
+        if 'enable_swagger' not in settings:
+            settings['enable_swagger'] = True  # Default enabled for development/testing
         if 'enable_time_plugin' not in settings:
             settings['enable_time_plugin'] = False
         if 'enable_http_plugin' not in settings:
@@ -354,6 +361,80 @@ def register_route_frontend_admin_settings(app):
             
             # --- Debug Logging Toggle ---
             enable_debug_logging = form_data.get('enable_debug_logging') == 'on'
+            
+            # --- Debug Logging Timer Settings ---
+            debug_logging_timer_enabled = form_data.get('enable_debug_logging_timer') == 'on'
+            debug_timer_value = int(form_data.get('debug_timer_value', 1))
+            debug_timer_unit = form_data.get('debug_timer_unit', 'hours')
+            debug_logging_turnoff_time = None
+            
+            # Validate debug timer values
+            timer_limits = {
+                'minutes': (1, 120),
+                'hours': (1, 24),
+                'days': (1, 7),
+                'weeks': (1, 52)
+            }
+            
+            if debug_timer_unit in timer_limits:
+                min_val, max_val = timer_limits[debug_timer_unit]
+                if debug_timer_value < min_val or debug_timer_value > max_val:
+                    debug_timer_value = min(max(debug_timer_value, min_val), max_val)
+            
+            # Calculate debug logging turnoff time if timer is enabled and debug logging is on
+            if enable_debug_logging and debug_logging_timer_enabled:
+                now = datetime.now()
+                
+                if debug_timer_unit == 'minutes':
+                    delta = timedelta(minutes=debug_timer_value)
+                elif debug_timer_unit == 'hours':
+                    delta = timedelta(hours=debug_timer_value)
+                elif debug_timer_unit == 'days':
+                    delta = timedelta(days=debug_timer_value)
+                elif debug_timer_unit == 'weeks':
+                    delta = timedelta(weeks=debug_timer_value)
+                else:
+                    delta = timedelta(hours=1)  # default fallback
+                
+                debug_logging_turnoff_time = now + delta
+                # Convert to ISO string for JSON serialization
+                debug_logging_turnoff_time_str = debug_logging_turnoff_time.isoformat()
+            else:
+                debug_logging_turnoff_time_str = None
+
+            # --- File Processing Logs Timer Settings ---
+            file_processing_logs_timer_enabled = form_data.get('enable_file_processing_logs_timer') == 'on'
+            file_timer_value = int(form_data.get('file_timer_value', 1))
+            file_timer_unit = form_data.get('file_timer_unit', 'hours')
+            file_processing_logs_turnoff_time = None
+            
+            # Validate file timer values
+            if file_timer_unit in timer_limits:
+                min_val, max_val = timer_limits[file_timer_unit]
+                if file_timer_value < min_val or file_timer_value > max_val:
+                    file_timer_value = min(max(file_timer_value, min_val), max_val)
+            
+            # Calculate file processing logs turnoff time if timer is enabled and file processing logs are on
+            enable_file_processing_logs = form_data.get('enable_file_processing_logs') == 'on'
+            if enable_file_processing_logs and file_processing_logs_timer_enabled:
+                now = datetime.now()
+                
+                if file_timer_unit == 'minutes':
+                    delta = timedelta(minutes=file_timer_value)
+                elif file_timer_unit == 'hours':
+                    delta = timedelta(hours=file_timer_value)
+                elif file_timer_unit == 'days':
+                    delta = timedelta(days=file_timer_value)
+                elif file_timer_unit == 'weeks':
+                    delta = timedelta(weeks=file_timer_value)
+                else:
+                    delta = timedelta(hours=1)  # default fallback
+                
+                file_processing_logs_turnoff_time = now + delta
+                # Convert to ISO string for JSON serialization
+                file_processing_logs_turnoff_time_str = file_processing_logs_turnoff_time.isoformat()
+            else:
+                file_processing_logs_turnoff_time_str = None
 
             # --- Authentication & Redirect Settings ---
             enable_front_door = form_data.get('enable_front_door') == 'on'
@@ -382,6 +463,10 @@ def register_route_frontend_admin_settings(app):
                 # Logging
                 'enable_appinsights_global_logging': enable_appinsights_global_logging,
                 'enable_debug_logging': enable_debug_logging,
+                'debug_logging_timer_enabled': debug_logging_timer_enabled,
+                'debug_timer_value': debug_timer_value,
+                'debug_timer_unit': debug_timer_unit,
+                'debug_logging_turnoff_time': debug_logging_turnoff_time_str,
                 # General
                 'app_title': app_title,
                 'show_logo': form_data.get('show_logo') == 'on',
@@ -396,7 +481,8 @@ def register_route_frontend_admin_settings(app):
                 'landing_page_alignment': form_data.get('landing_page_alignment', 'left'),
                 'enable_dark_mode_default': form_data.get('enable_dark_mode_default') == 'on',
                 'enable_left_nav_default': form_data.get('enable_left_nav_default') == 'on',
-                'enable_health_check': form_data.get('enable_health_check') == 'on',
+                'enable_external_healthcheck': form_data.get('enable_external_healthcheck') == 'on',
+                'enable_swagger': form_data.get('enable_swagger') == 'on',
                 'enable_semantic_kernel': form_data.get('enable_semantic_kernel') == 'on',
                 'per_user_semantic_kernel': form_data.get('per_user_semantic_kernel') == 'on',
 
@@ -454,7 +540,11 @@ def register_route_frontend_admin_settings(app):
                 'enable_group_workspaces': form_data.get('enable_group_workspaces') == 'on',
                 'enable_public_workspaces': form_data.get('enable_public_workspaces') == 'on',
                 'enable_file_sharing': form_data.get('enable_file_sharing') == 'on',
-                'enable_file_processing_logs': form_data.get('enable_file_processing_logs') == 'on',
+                'enable_file_processing_logs': enable_file_processing_logs,
+                'file_processing_logs_timer_enabled': file_processing_logs_timer_enabled,
+                'file_timer_value': file_timer_value,
+                'file_timer_unit': file_timer_unit,
+                'file_processing_logs_turnoff_time': file_processing_logs_turnoff_time_str,
                 'require_member_of_create_group': require_member_of_create_group,
                 'require_member_of_create_public_workspace': require_member_of_create_public_workspace,
 

@@ -83,6 +83,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adminForm) {
         adminForm.addEventListener('submit', function(e) {
             try {
+                console.log('🚀 Form submission started - gathering tab information...');
+                
+                // Capture the current active tab before form submission
+                const activeTab = getCurrentActiveTab();
+                
+                if (activeTab) {
+                    // Store the active tab in sessionStorage to restore after redirect
+                    sessionStorage.setItem('adminSettingsActiveTab', activeTab);
+                } else {
+                    console.warn('⚠️ Form submission - No active tab detected, tab preservation may not work');
+                }
+                
                 // Ensure classification categories is valid JSON before submission
                 if (classificationJsonInput) {
                     const jsonString = updateClassificationJsonInput();
@@ -105,13 +117,175 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+/**
+ * Gets the current active tab's target hash (e.g., "#general", "#agents")
+ * @returns {string|null} The hash of the currently active tab, or null if none found
+ */
+function getCurrentActiveTab() {    
+    // First check if we're using sidebar navigation
+    const sidebarToggle = document.getElementById('admin-settings-toggle');
+    
+    if (sidebarToggle) {
+        
+        // For sidebar navigation, check for active sidebar nav links
+        // First check for active section (more specific)
+        const activeSidebarSection = document.querySelector('.admin-nav-section.active');
+        if (activeSidebarSection) {
+            const tabId = activeSidebarSection.getAttribute('data-tab');
+            return tabId ? '#' + tabId : null;
+        }
+        
+        // Then check for active tab (less specific)
+        const activeSidebarTab = document.querySelector('.admin-nav-tab.active');
+        console.log('🔍 getCurrentActiveTab - Looking for .admin-nav-tab.active:', activeSidebarTab);
+        if (activeSidebarTab) {
+            const tabId = activeSidebarTab.getAttribute('data-tab');
+            return tabId ? '#' + tabId : null;
+        }
+        
+        // Fallback: check which tab pane is currently visible for sidebar nav
+        const activeTabPane = document.querySelector('.tab-pane.show.active');
+        if (activeTabPane) {
+            return '#' + activeTabPane.id;
+        }
+        
+        // If no active tab found but we have a hash, use that
+        if (window.location.hash) {
+            return window.location.hash;
+        }
+                
+        // Debug: List all available sidebar navigation elements
+        const allSections = document.querySelectorAll('.admin-nav-section');
+        const allTabs = document.querySelectorAll('.admin-nav-tab');
+        const allPanes = document.querySelectorAll('.tab-pane');
+        allSections.forEach(section => {
+            console.log('  - Section:', section.getAttribute('data-tab'), 'active:', section.classList.contains('active'));
+        });
+        allTabs.forEach(tab => {
+            console.log('  - Tab:', tab.getAttribute('data-tab'), 'active:', tab.classList.contains('active'));
+        });
+        allPanes.forEach(pane => {
+            console.log('  - Pane:', pane.id, 'show:', pane.classList.contains('show'), 'active:', pane.classList.contains('active'));
+        });
+        
+    } else {
+        
+        // For tab navigation, check Bootstrap tab buttons
+        const activeTabButton = document.querySelector('button.nav-link.active[data-bs-target]');
+        console.log('🔍 getCurrentActiveTab - Looking for button.nav-link.active[data-bs-target]:', activeTabButton);
+        if (activeTabButton) {
+            const target = activeTabButton.getAttribute('data-bs-target');
+            return target;
+        }
+        
+        // Fallback: check which tab pane is currently visible for tab nav
+        const activeTabPane = document.querySelector('.tab-pane.fade.show.active');
+        console.log('🔍 getCurrentActiveTab - Looking for .tab-pane.fade.show.active:', activeTabPane);
+        if (activeTabPane) {
+            return '#' + activeTabPane.id;
+        }
+        
+        console.log('❌ getCurrentActiveTab - No active Bootstrap tab elements found');
+    }
+    
+    console.log('❌ getCurrentActiveTab - No active tab found anywhere');
+    return null;
+}
+
 function activateTabFromHash() {
-    const hash = window.location.hash;
+    const timestamp = new Date().toLocaleTimeString();
+    console.log('activateTabFromHash - Called');
+    
+    let hash = window.location.hash;
+    
+    // If no hash in URL, check sessionStorage for saved tab from form submission
+    if (!hash) {
+        const savedTab = sessionStorage.getItem('adminSettingsActiveTab');
+        
+        if (savedTab) {
+            hash = savedTab;
+            
+            // Clear the saved tab to prevent it from affecting future navigation
+            sessionStorage.removeItem('adminSettingsActiveTab');
+            
+            // Update URL with the restored hash
+            history.replaceState(null, null, hash);
+        } else {
+            console.log(`❌ [${timestamp}] activateTabFromHash - No saved tab found in sessionStorage`);
+        }
+    } else {
+        console.log(`✅ [${timestamp}] activateTabFromHash - Hash found in URL:`, hash);
+    }
+    
     if (hash) {
-        const tabButton = document.querySelector(`button.nav-link[data-bs-target="${hash}"]`);
-        if (tabButton) {
-            const tab = new bootstrap.Tab(tabButton);
-            tab.show();
+        const tabId = hash.startsWith('#') ? hash.substring(1) : hash;
+        
+        // Check if we're using sidebar navigation
+        const sidebarToggle = document.getElementById('admin-settings-toggle');
+        
+        if (sidebarToggle) {
+            // Try different ways to access the showAdminTab function
+            let showTabFunction = null;
+            if (typeof showAdminTab === 'function') {
+                showTabFunction = showAdminTab;
+            } else if (typeof window.showAdminTab === 'function') {
+                showTabFunction = window.showAdminTab;
+            }
+            
+            if (showTabFunction) {
+                showTabFunction(tabId);
+            } else {
+                // Manual tab activation fallback
+                // Hide all tab panes
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                });
+                
+                // Show the selected tab pane
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) {
+                    targetTab.classList.add('show', 'active');
+                }
+            }
+            
+            // Set active nav link for sidebar - handle both tab and section level
+            
+            // First clear all active states
+            const allTabs = document.querySelectorAll('.admin-nav-tab');
+            const allSections = document.querySelectorAll('.admin-nav-section');
+            
+            allTabs.forEach(link => {
+                link.classList.remove('active');
+            });
+            allSections.forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Set the main tab as active
+            const navLink = document.querySelector(`.admin-nav-tab[data-tab="${tabId}"]`);
+            const navSection = document.querySelector(`.admin-nav-section[data-tab="${tabId}"]`);
+            
+            if (navLink) {
+                navLink.classList.add('active');
+            }
+            
+            if (navSection) {
+                navSection.classList.add('active');
+            }
+            
+            // Also expand the submenu if it exists
+            const submenu = document.getElementById(tabId + '-submenu');
+            if (submenu) {
+                submenu.style.display = 'block';
+            }
+            
+        } else {
+            // Use Bootstrap tab navigation
+            const tabButton = document.querySelector(`button.nav-link[data-bs-target="${hash}"]`);
+            if (tabButton) {
+                const tab = new bootstrap.Tab(tabButton);
+                tab.show();
+            }
         }
     }
 }
@@ -1014,22 +1188,6 @@ function updateExternalLinksJsonInput() {
 }
 
 function setupToggles() {
-    // --- Health Check Toggle ---
-    const enableHealthCheckToggle = document.getElementById('enable_health_check');
-    const healthCheckSettingsDiv = document.getElementById('health_check_settings');
-    if (enableHealthCheckToggle) {
-        // Set initial state if there is a settings div
-        if (healthCheckSettingsDiv) {
-            healthCheckSettingsDiv.style.display = enableHealthCheckToggle.checked ? 'block' : 'none';
-        }
-        enableHealthCheckToggle.addEventListener('change', function () {
-            if (healthCheckSettingsDiv) {
-                healthCheckSettingsDiv.style.display = this.checked ? 'block' : 'none';
-            }
-            markFormAsModified();
-        });
-    }
-
     // --- Enable Agents (Semantic Kernel) Toggle ---
     const agentsMainContent = document.getElementById('agents-main-content');
     const agentsDisabledMsg = document.getElementById('agents-disabled-message');
@@ -1559,6 +1717,218 @@ function setupToggles() {
             markFormAsModified();
         });
     }
+    
+    // --- Workspace Dependency Validation ---
+    setupWorkspaceDependencyValidation();
+}
+
+/**
+ * Set up validation for workspace dependencies
+ */
+function setupWorkspaceDependencyValidation() {
+    const userWorkspaceToggle = document.getElementById('enable_user_workspace');
+    const groupWorkspaceToggle = document.getElementById('enable_group_workspaces');
+    const publicWorkspaceToggle = document.getElementById('enable_public_workspaces');
+    
+    // Create or find notification area for workspace dependencies
+    let notificationArea = document.getElementById('workspace-dependency-notifications');
+    if (!notificationArea) {
+        notificationArea = document.createElement('div');
+        notificationArea.id = 'workspace-dependency-notifications';
+        notificationArea.className = 'mb-3';
+        
+        // Insert at the beginning of the workspaces tab content
+        const workspacesTab = document.getElementById('workspaces');
+        if (workspacesTab) {
+            const firstCard = workspacesTab.querySelector('.card');
+            if (firstCard) {
+                workspacesTab.insertBefore(notificationArea, firstCard);
+            } else {
+                workspacesTab.appendChild(notificationArea);
+            }
+        }
+    }
+    
+    /**
+     * Check if workspace dependencies are configured
+     */
+    function checkWorkspaceDependencies() {
+        const userEnabled = userWorkspaceToggle?.checked || false;
+        const groupEnabled = groupWorkspaceToggle?.checked || false;
+        const publicEnabled = publicWorkspaceToggle?.checked || false;
+        const workspacesEnabled = userEnabled || groupEnabled || publicEnabled;
+        
+        if (!workspacesEnabled) {
+            notificationArea.innerHTML = '';
+            return;
+        }
+        
+        const missingDependencies = [];
+        
+        // Check Embeddings configuration
+        const embeddingConfigured = checkEmbeddingConfiguration();
+        if (!embeddingConfigured) {
+            missingDependencies.push('Embeddings');
+        }
+        
+        // Check Azure AI Search configuration
+        const searchConfigured = checkAzureSearchConfiguration();
+        if (!searchConfigured) {
+            missingDependencies.push('Azure AI Search');
+        }
+        
+        // Check Document Intelligence configuration
+        const docIntelConfigured = checkDocumentIntelligenceConfiguration();
+        if (!docIntelConfigured) {
+            missingDependencies.push('Document Intelligence');
+        }
+        
+        // Display notification if dependencies are missing
+        if (missingDependencies.length > 0) {
+            const enabledWorkspaces = [];
+            if (userEnabled) enabledWorkspaces.push('Personal Workspaces');
+            if (groupEnabled) enabledWorkspaces.push('Group Workspaces');
+            if (publicEnabled) enabledWorkspaces.push('Public Workspaces');
+            
+            notificationArea.innerHTML = `
+                <div class="alert alert-warning" role="alert">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 1.2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading mb-2">Missing Required Configuration</h6>
+                            <p class="mb-2">
+                                You have enabled <strong>${enabledWorkspaces.join(', ')}</strong> but some required services are not configured.
+                            </p>
+                            <p class="mb-2">
+                                <strong>Missing configurations:</strong> ${missingDependencies.join(', ')}
+                            </p>
+                            <hr class="my-2">
+                            <p class="mb-0 small">
+                                <strong>To fix this:</strong> Please configure the missing services in their respective tabs:
+                                ${missingDependencies.includes('Embeddings') ? '<a href="#ai-models" class="alert-link text-decoration-none" onclick="activateTab(\'#ai-models\')">AI Models</a>' : ''}
+                                ${missingDependencies.includes('Azure AI Search') ? '<a href="#search-extract" class="alert-link text-decoration-none" onclick="activateTab(\'#search-extract\')">Search and Extract</a>' : ''}
+                                ${missingDependencies.includes('Document Intelligence') ? '<a href="#search-extract" class="alert-link text-decoration-none" onclick="activateTab(\'#search-extract\')">Search and Extract</a>' : ''}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            notificationArea.innerHTML = `
+                <div class="alert alert-success" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                        <strong>Workspace Configuration Complete</strong> - All required dependencies are configured.
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Check if embeddings are properly configured
+     */
+    function checkEmbeddingConfiguration() {
+        const useApim = document.getElementById('enable_embedding_apim')?.checked || false;
+        
+        if (useApim) {
+            const endpoint = document.getElementById('azure_apim_embedding_endpoint')?.value;
+            const key = document.getElementById('azure_apim_embedding_subscription_key')?.value;
+            return endpoint && endpoint.trim() !== '' && key && key.trim() !== '';
+        } else {
+            const endpoint = document.getElementById('azure_openai_embedding_endpoint')?.value;
+            const authType = document.getElementById('azure_openai_embedding_authentication_type')?.value;
+            
+            if (!endpoint || endpoint.trim() === '') return false;
+            
+            if (authType === 'key') {
+                const key = document.getElementById('azure_openai_embedding_key')?.value;
+                return key && key.trim() !== '';
+            }
+            
+            return true; // Managed identity doesn't need key
+        }
+    }
+    
+    /**
+     * Check if Azure AI Search is properly configured
+     */
+    function checkAzureSearchConfiguration() {
+        const useApim = document.getElementById('enable_ai_search_apim')?.checked || false;
+        
+        if (useApim) {
+            const endpoint = document.getElementById('azure_apim_ai_search_endpoint')?.value;
+            const key = document.getElementById('azure_apim_ai_search_subscription_key')?.value;
+            return endpoint && endpoint.trim() !== '' && key && key.trim() !== '';
+        } else {
+            const endpoint = document.getElementById('azure_ai_search_endpoint')?.value;
+            const authType = document.getElementById('azure_ai_search_authentication_type')?.value;
+            
+            if (!endpoint || endpoint.trim() === '') return false;
+            
+            if (authType === 'key') {
+                const key = document.getElementById('azure_ai_search_key')?.value;
+                return key && key.trim() !== '';
+            }
+            
+            return true; // Managed identity doesn't need key
+        }
+    }
+    
+    /**
+     * Check if Document Intelligence is properly configured
+     */
+    function checkDocumentIntelligenceConfiguration() {
+        const useApim = document.getElementById('enable_document_intelligence_apim')?.checked || false;
+        
+        if (useApim) {
+            const endpoint = document.getElementById('azure_apim_document_intelligence_endpoint')?.value;
+            const key = document.getElementById('azure_apim_document_intelligence_subscription_key')?.value;
+            return endpoint && endpoint.trim() !== '' && key && key.trim() !== '';
+        } else {
+            const endpoint = document.getElementById('azure_document_intelligence_endpoint')?.value;
+            const authType = document.getElementById('azure_document_intelligence_authentication_type')?.value;
+            
+            if (!endpoint || endpoint.trim() === '') return false;
+            
+            if (authType === 'key') {
+                const key = document.getElementById('azure_document_intelligence_key')?.value;
+                return key && key.trim() !== '';
+            }
+            
+            return true; // Managed identity doesn't need key
+        }
+    }
+    
+    /**
+     * Helper function to activate a tab
+     */
+    function activateTab(tabId) {
+        const tabTrigger = document.querySelector(`[data-bs-target="${tabId}"]`);
+        if (tabTrigger) {
+            const tab = new bootstrap.Tab(tabTrigger);
+            tab.show();
+        }
+    }
+    
+    // Make activateTab globally available for the alert links
+    window.activateTab = activateTab;
+    
+    // Add event listeners to workspace toggles
+    if (userWorkspaceToggle) {
+        userWorkspaceToggle.addEventListener('change', checkWorkspaceDependencies);
+    }
+    if (groupWorkspaceToggle) {
+        groupWorkspaceToggle.addEventListener('change', checkWorkspaceDependencies);
+    }
+    if (publicWorkspaceToggle) {
+        publicWorkspaceToggle.addEventListener('change', checkWorkspaceDependencies);
+    }
+    
+    // Initial check
+    checkWorkspaceDependencies();
 }
 
 function setupTestButtons() {
@@ -2531,16 +2901,16 @@ function handleTabNavigation(stepNumber) {
     // Map steps to tabs that need to be activated
     const stepToTab = {
         1: 'general-tab',     // App title and logo (General tab)
-        2: 'gpt-tab',         // GPT settings
-        3: 'gpt-tab',         // GPT model selection
+        2: 'ai-models-tab',   // GPT settings (now in AI Models tab)
+        3: 'ai-models-tab',   // GPT model selection (now in AI Models tab)
         4: 'workspaces-tab',  // Workspace and groups settings
-        5: 'embeddings-tab',  // Embedding settings
+        5: 'ai-models-tab',   // Embedding settings (now in AI Models tab)
         6: 'search-extract-tab', // AI Search settings
         7: 'search-extract-tab', // Document Intelligence settings
         8: 'workspaces-tab',  // Video support
         9: 'workspaces-tab',  // Audio support
         10: 'safety-tab',     // Content safety
-        11: 'other-tab',      // User feedback and archiving
+        11: 'system-tab',     // User feedback and archiving (renamed from other-tab)
         12: 'citation-tab'    // Enhanced Citations and Image Generation
     };
     
