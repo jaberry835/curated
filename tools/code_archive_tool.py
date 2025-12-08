@@ -31,7 +31,14 @@ CODE_EXTENSIONS = {
     '.sql', '.graphql', '.proto',
     '.conf', '.config', '.ini', '.toml',
     '.dockerfile', '.gitignore', '.gitattributes',
-    '.txt', '.log', '.env.example'
+    '.txt', '.log',
+    # Additional extensions
+    '.bak', '.backup', '.lock', '.text',
+    '.example', '.sample', '.env',
+    '.csproj', '.sln',
+    '.bicep', '.bicepparam', '.tf',
+    '.kql', '.http',
+    '.map', '.mjs', '.cjs'
 }
 
 # Image file extensions (can be optionally included)
@@ -52,7 +59,9 @@ EXCLUDE_EXTENSIONS = {
     '.exe', '.dll', '.so', '.dylib', '.bin', '.o', '.obj', '.lib', '.a',
     '.app', '.msi', '.dmg', '.deb', '.rpm', '.apk',
     # Media (video/audio)
-    '.mp4', '.avi', '.mov', '.mp3', '.wav', '.flac', '.ogg', '.webm', '.mkv'
+    '.mp4', '.avi', '.mov', '.mp3', '.wav', '.flac', '.ogg', '.webm', '.mkv',
+    # Test snapshots and office files
+    '.snap', '.vsdx'
 }
 
 # Track all known extensions
