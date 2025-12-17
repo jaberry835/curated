@@ -144,13 +144,17 @@ async def build_agent() -> ChatCompletionAgent:
     )
     # Defer MCP plugin connection until a request arrives so we can include per-request headers
     
+    # Load instructions from environment variable
+    fictional_companies_instructions = os.getenv(
+        "FICTIONAL_COMPANIES_AGENT_INSTRUCTIONS",
+        "Company and device lookup specialist. Use FictionalCompaniesTools; keep outputs factual and brief."
+    )
+    
     agent = ChatCompletionAgent(
         service=kernel.get_service(),
         kernel=kernel,
         name="FictionalCompaniesAgent",
-        instructions=(
-            "Company and device lookup specialist. Use FictionalCompaniesTools; keep outputs factual and brief."
-        ),
+        instructions=fictional_companies_instructions,
         function_choice_behavior=FunctionChoiceBehavior.Auto(
             filters={"included_plugins": ["FictionalCompaniesTools"]}
         ),
