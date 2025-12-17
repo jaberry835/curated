@@ -114,6 +114,10 @@ class CosmosDBService:
         # Save to CosmosDB
         result = await self.messages.save_message(session_id, user_id, message_id, role, content, metadata)
         
+        # CRITICAL: Load existing chat history from database first to preserve any system messages
+        # (e.g., document upload notifications) that may have been added
+        await self.memory_service.load_chat_history(session_id, user_id)
+        
         # Update chat history in memory
         if role == 'user':
             self.memory_service.add_user_message(session_id, content)

@@ -9,11 +9,12 @@ Public API:
 - cleanup() -> None
 """
 
-from typing import List
+from typing import List, Optional
 import os
 import logging
 
 from src.a2a.host_router import RoutingHost
+from semantic_kernel.contents import ChatHistory
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +44,22 @@ class MultiAgentSystem:
         return True
 
     async def process_question(self, question: str, session_id: str = None, user_id: str = None, adx_token: str = None, authorization: str = None) -> str:
+        # Load chat history from memory service if session_id is provided
+        chat_history: Optional[ChatHistory] = None
+        if session_id:
+            try:
+                from src.services.cosmos_service import cosmos_service
+                # Load chat history from memory service
+                await cosmos_service.memory_service.load_chat_history(session_id, user_id)
+                chat_history = cosmos_service.memory_service.get_chat_history(session_id)
+                if chat_history:
+                    logger.info(f"Loaded chat history for session {session_id} with {len(chat_history.messages)} messages")
+                else:
+                    logger.info(f"No existing chat history found for session {session_id}, will create new one")
+            except Exception as e:
+                logger.warning(f"Could not load chat history for session {session_id}: {e}")
+                chat_history = None
+        
         # Forward context so the router can pass headers to specialists
         return await self.host.process_user_message(
             message=question,
@@ -50,6 +67,7 @@ class MultiAgentSystem:
             user_id=user_id,
             adx_token=adx_token,
             authorization=authorization,
+            chat_history=chat_history,
         )
 
     async def cleanup(self):
