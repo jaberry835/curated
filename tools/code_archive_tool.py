@@ -33,8 +33,8 @@ CODE_EXTENSIONS = {
     '.dockerfile', '.gitignore', '.gitattributes',
     '.txt', '.log',
     # Additional extensions
-    '.bak', '.backup', '.lock', '.text',
-    '.example', '.sample', '.env',
+    '.lock', '.text',
+    '.example', '.env',
     '.csproj', '.sln',
     '.bicep', '.bicepparam', '.tf',
     '.kql', '.http',
