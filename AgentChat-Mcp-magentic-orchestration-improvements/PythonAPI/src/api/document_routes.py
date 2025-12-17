@@ -15,9 +15,11 @@ from urllib.parse import quote
 
 try:
     from ..services.document_service import document_service
+    from ..services.cosmos_service import cosmos_service
     from ..utils.logging import get_logger
 except ImportError:
     from src.services.document_service import document_service
+    from src.services.cosmos_service import cosmos_service
     from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -98,6 +100,18 @@ def upload_document():
         document_id = result["document_id"]
         
         logger.info(f"Document uploaded successfully - DocumentId: {document_id}")
+        
+        # Add a system message to chat history so the router knows a document was uploaded
+        try:
+            chat_history = run_async_in_thread(cosmos_service.memory_service.load_chat_history(session_id, user_id))
+            if chat_history:
+                chat_history.add_system_message(
+                    f"[DOCUMENT UPLOAD] User uploaded file: {file.filename} (ID: {document_id})"
+                )
+                run_async_in_thread(cosmos_service.memory_service.save_chat_history(session_id, user_id))
+                logger.info(f"Added document upload notification to chat history for session {session_id}")
+        except Exception as e:
+            logger.warning(f"Failed to update chat history with document upload: {e}")
         
         # Start async processing with delay for Cosmos DB consistency
         def process_document_background():

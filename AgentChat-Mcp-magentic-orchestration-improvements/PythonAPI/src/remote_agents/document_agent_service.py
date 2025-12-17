@@ -154,24 +154,28 @@ async def build_agent() -> ChatCompletionAgent:
     global DOC_MCP_PLUGIN
     DOC_MCP_PLUGIN = None
 
+    # Load instructions from environment variable
+    document_instructions = os.getenv(
+        "DOCUMENT_AGENT_INSTRUCTIONS",
+        "You are a document management specialist for the current user's chat session.\n\n"
+        "Primary purpose: work ONLY with documents uploaded to the CURRENT session by the CURRENT user.\n"
+        "You have MCP tools: DocumentTools: list_documents, search_documents, get_document, get_document_content_summary.\n\n"
+        "Smart document resolution when requests are vague (e.g., 'summarize that document'):\n"
+        "1) Always begin by calling list_documents() to enumerate session-scoped files (filtered by X-Session-ID and X-User-ID).\n"
+        "2) If zero docs: inform the user to upload a document.\n"
+        "3) If one doc: treat it as the target and proceed without asking the user for an ID.\n"
+        "4) If multiple docs: prefer search_documents() to disambiguate by filename/title; ask ONE short clarifying question only if needed.\n"
+        "5) After identifying the target, call get_document_content_summary(documentId) and return a concise summary.\n\n"
+        "Filename rules: preserve the EXACT filename as uploaded (case/spacing).\n"
+        "Critical rules: NEVER ask the user to provide a document ID; use the tools to discover it. \n"
+        "Never fabricate content or documents; only use tool outputs. Keep responses concise."
+    )
+    
     agent = ChatCompletionAgent(
         service=kernel.get_service(),
         kernel=kernel,
         name="DocumentAgent",
-        instructions=(
-            "You are a document management specialist for the current user's chat session.\n\n"
-            "Primary purpose: work ONLY with documents uploaded to the CURRENT session by the CURRENT user.\n"
-            "You have MCP tools: DocumentTools: list_documents, search_documents, get_document, get_document_content_summary.\n\n"
-            "Smart document resolution when requests are vague (e.g., 'summarize that document'):\n"
-            "1) Always begin by calling list_documents() to enumerate session-scoped files (filtered by X-Session-ID and X-User-ID).\n"
-            "2) If zero docs: inform the user to upload a document.\n"
-            "3) If one doc: treat it as the target and proceed without asking the user for an ID.\n"
-            "4) If multiple docs: prefer search_documents() to disambiguate by filename/title; ask ONE short clarifying question only if needed.\n"
-            "5) After identifying the target, call get_document_content_summary(documentId) and return a concise summary.\n\n"
-            "Filename rules: preserve the EXACT filename as uploaded (case/spacing).\n"
-            "Critical rules: NEVER ask the user to provide a document ID; use the tools to discover it. \n"
-            "Never fabricate content or documents; only use tool outputs. Keep responses concise."
-        ),
+        instructions=document_instructions,
         # Match legacy behavior: allow the model to choose tools with strong instructions
         function_choice_behavior=FunctionChoiceBehavior.Auto(
             filters={"included_plugins": ["DocumentTools"]}
