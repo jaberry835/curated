@@ -199,9 +199,10 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
     skipped_count = 0
     excluded_count = 0
     
-    # Track unknown extensions
+    # Track unknown extensions and non-.txt files
     unknown_extensions = set()
     seen_extensions = set()
+    non_txt_files = []
     
     try:
         print("Processing files...")
@@ -224,6 +225,11 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
                 seen_extensions.add(ext)
                 print(f"ℹ New extension encountered: '{ext}' (file: {rel_path})")
             
+            # Skip .gitignore files
+            if Path(rel_path).name == '.gitignore':
+                excluded_count += 1
+                continue
+            
             # Check if file should be processed
             should_process = should_process_file(rel_path, src_file, include_images, include_fonts)
             
@@ -241,6 +247,7 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
             else:
                 dst_file = temp_dir / rel_path
                 skipped_count += 1
+                non_txt_files.append(rel_path)
             
             # Create parent directories
             dst_file.parent.mkdir(parents=True, exist_ok=True)
@@ -253,6 +260,13 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
         print(f"Included {skipped_count} non-code files (copied as-is)")
         if excluded_count > 0:
             print(f"Excluded {excluded_count} binary/media files")
+        
+        if non_txt_files:
+            print(f"\n📋 Files included WITHOUT .txt extension ({len(non_txt_files)}):")
+            for file in sorted(non_txt_files)[:50]:  # Show first 50
+                print(f"   {file}")
+            if len(non_txt_files) > 50:
+                print(f"   ... and {len(non_txt_files) - 50} more")
         
         if unknown_extensions:
             print(f"\n⚠ Unknown extensions found: {', '.join(sorted(unknown_extensions))}")
