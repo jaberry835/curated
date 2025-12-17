@@ -13,7 +13,7 @@ Only processes files that are tracked by git (checked in).
 import os
 import sys
 import shutil
-import zipfile
+import tarfile
 import subprocess
 import argparse
 from pathlib import Path
@@ -96,6 +96,32 @@ def get_git_tracked_files(directory: str) -> Set[str]:
         sys.exit(1)
 
 
+def get_all_files(directory: str) -> Set[str]:
+    """
+    Get all files in a directory recursively.
+    
+    Args:
+        directory: The directory to scan
+        
+    Returns:
+        Set of relative file paths
+    """
+    directory_path = Path(directory)
+    files = set()
+    
+    for file_path in directory_path.rglob('*'):
+        if file_path.is_file():
+            # Skip hidden directories and common ignore patterns
+            if any(part.startswith('.') and part not in ['.env', '.env.example', '.env.sample'] 
+                   for part in file_path.parts[len(directory_path.parts):]):
+                continue
+            
+            rel_path = file_path.relative_to(directory_path)
+            files.add(str(rel_path))
+    
+    return files
+
+
 def should_process_file(file_path: str, full_path: Path = None, include_images: bool = False, include_fonts: bool = False) -> bool:
     """
     Determine if a file should be processed based on its extension.
@@ -176,16 +202,19 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
         print(f"Error: '{source_dir}' is not a directory.")
         sys.exit(1)
     
-    # Check if it's a git repository
-    if not (source_path / '.git').exists():
-        print(f"Error: '{source_dir}' is not a git repository.")
-        sys.exit(1)
-    
     print(f"Packing directory: {source_path}")
-    print("Getting git-tracked files...")
     
-    git_files = get_git_tracked_files(str(source_path))
-    print(f"Found {len(git_files)} git-tracked files")
+    # Check if it's a git repository
+    is_git_repo = (source_path / '.git').exists()
+    
+    if is_git_repo:
+        print("Getting git-tracked files...")
+        git_files = get_git_tracked_files(str(source_path))
+        print(f"Found {len(git_files)} git-tracked files")
+    else:
+        print("Not a git repository - scanning all files...")
+        git_files = get_all_files(str(source_path))
+        print(f"Found {len(git_files)} files")
     
     # Create temporary directory for modified files
     temp_dir = source_path.parent / f".temp_pack_{source_path.name}"
@@ -230,24 +259,23 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
                 excluded_count += 1
                 continue
             
-            # Check if file should be processed
-            should_process = should_process_file(rel_path, src_file, include_images, include_fonts)
-            
-            if should_process is False and (Path(rel_path).suffix.lower() in EXCLUDE_EXTENSIONS or 
-                                           (Path(rel_path).suffix.lower() in IMAGE_EXTENSIONS and not include_images) or
-                                           (Path(rel_path).suffix.lower() in FONT_EXTENSIONS and not include_fonts)):
-                # File is explicitly excluded, don't include it
+            # Check if file should be excluded
+            ext_lower = Path(rel_path).suffix.lower()
+            if ext_lower in EXCLUDE_EXTENSIONS:
                 excluded_count += 1
                 continue
             
-            # Determine destination path
-            if should_process:
-                dst_file = temp_dir / f"{rel_path}.txt"
-                processed_count += 1
-            else:
-                dst_file = temp_dir / rel_path
-                skipped_count += 1
-                non_txt_files.append(rel_path)
+            if ext_lower in IMAGE_EXTENSIONS and not include_images:
+                excluded_count += 1
+                continue
+            
+            if ext_lower in FONT_EXTENSIONS and not include_fonts:
+                excluded_count += 1
+                continue
+            
+            # Add .txt.txt to ALL files that aren't excluded
+            dst_file = temp_dir / f"{rel_path}.txt.txt"
+            processed_count += 1
             
             # Create parent directories
             dst_file.parent.mkdir(parents=True, exist_ok=True)
@@ -256,30 +284,22 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
             shutil.copy2(src_file, dst_file)
         
         print()
-        print(f"Processed {processed_count} code files (added .txt)")
-        print(f"Included {skipped_count} non-code files (copied as-is)")
+        print(f"Processed {processed_count} files (added .txt.txt to all)")
         if excluded_count > 0:
             print(f"Excluded {excluded_count} binary/media files")
-        
-        if non_txt_files:
-            print(f"\n📋 Files included WITHOUT .txt extension ({len(non_txt_files)}):")
-            for file in sorted(non_txt_files)[:50]:  # Show first 50
-                print(f"   {file}")
-            if len(non_txt_files) > 50:
-                print(f"   ... and {len(non_txt_files) - 50} more")
         
         if unknown_extensions:
             print(f"\n⚠ Unknown extensions found: {', '.join(sorted(unknown_extensions))}")
             print("  Consider adding these to CODE_EXTENSIONS or EXCLUDE_EXTENSIONS")
         
-        # Create zip archive
-        print(f"\nCreating zip archive: {output_zip}")
+        # Create tar archive (uncompressed)
+        print(f"\nCreating tar archive: {output_zip}")
         
-        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        with tarfile.open(output_zip, 'w') as tar:
             for file_path in temp_dir.rglob('*'):
                 if file_path.is_file():
                     arcname = file_path.relative_to(temp_dir)
-                    zipf.write(file_path, arcname)
+                    tar.add(file_path, arcname=arcname)
         
         print(f"✓ Successfully created: {output_zip}")
         
@@ -290,19 +310,19 @@ def pack_directory(source_dir: str, output_zip: str, include_images: bool = Fals
             print("Cleaned up temporary files")
 
 
-def unpack_archive(zip_file: str, output_dir: str):
+def unpack_archive(tar_file: str, output_dir: str):
     """
-    Unpack a zip archive and remove .txt extensions from code files.
+    Unpack a tar.gz archive and remove .txt.txt extensions from code files.
     
     Args:
-        zip_file: Path to zip file
+        tar_file: Path to tar.gz file
         output_dir: Output directory to extract to
     """
-    zip_path = Path(zip_file).resolve()
+    tar_path = Path(tar_file).resolve()
     output_path = Path(output_dir).resolve()
     
-    if not zip_path.exists():
-        print(f"Error: Zip file '{zip_file}' does not exist.")
+    if not tar_path.exists():
+        print(f"Error: Archive file '{tar_file}' does not exist.")
         sys.exit(1)
     
     if output_path.exists():
@@ -314,81 +334,65 @@ def unpack_archive(zip_file: str, output_dir: str):
     
     output_path.mkdir(parents=True, exist_ok=True)
     
-    print(f"Unpacking archive: {zip_path}")
+    print(f"Unpacking archive: {tar_path}")
     print(f"Output directory: {output_path}")
     
     restored_count = 0
-    copied_count = 0
     
-    with zipfile.ZipFile(zip_path, 'r') as zipf:
-        for file_info in zipf.filelist:
-            if file_info.is_dir():
+    with tarfile.open(tar_path, 'r') as tar:
+        for member in tar.getmembers():
+            if not member.isfile():
                 continue
             
-            archived_name = file_info.filename
+            archived_name = member.name
             
-            # Check if file has .txt extension that should be removed
-            if archived_name.endswith('.txt'):
-                # Get the original name without .txt
-                original_name = archived_name[:-4]
-                
-                # Check if the original file would have been processed
-                if should_process_file(original_name):
-                    target_name = original_name
-                    restored_count += 1
-                else:
-                    # It was a .txt file originally, keep it as is
-                    target_name = archived_name
-                    copied_count += 1
+            # Remove .txt.txt extension
+            if archived_name.endswith('.txt.txt'):
+                target_name = archived_name[:-8]  # Remove .txt.txt
+                restored_count += 1
             else:
                 target_name = archived_name
-                copied_count += 1
             
             # Extract file
             target_path = output_path / target_name
             target_path.parent.mkdir(parents=True, exist_ok=True)
             
-            with zipf.open(file_info) as source, open(target_path, 'wb') as target:
-                shutil.copyfileobj(source, target)
-            
-            # Preserve file permissions
-            external_attr = file_info.external_attr >> 16
-            if external_attr:
-                target_path.chmod(external_attr)
+            # Extract the file
+            member.name = target_name
+            tar.extract(member, output_path)
     
-    print(f"Restored {restored_count} code files (removed .txt)")
-    print(f"Extracted {copied_count} files as-is")
+    print(f"Restored {restored_count} files (removed .txt.txt)")
     print(f"✓ Successfully unpacked to: {output_path}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Pack and unpack code archives with .txt extensions',
+        description='Pack and unpack code archives with .txt.txt extensions',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   Pack a directory:
-    %(prog)s pack /path/to/project output.zip
+    %(prog)s pack /path/to/project output.tar
   
   Unpack an archive:
-    %(prog)s unpack archive.zip /path/to/output
+    %(prog)s unpack archive.tar /path/to/output
         """
     )
     
     subparsers = parser.add_subparsers(dest='command', help='Command to execute')
     
     # Pack command
-    pack_parser = subparsers.add_parser('pack', help='Pack a directory into a zip archive')
-    pack_parser.add_argument('directory', help='Directory to pack (must be a git repository)')
-    pack_parser.add_argument('output', help='Output zip file path')
+    pack_parser = subparsers.add_parser('pack', help='Pack a directory into a tar archive')
+    pack_parser.add_argument('directory', help='Directory to pack (git-tracked files if git repo, all files otherwise)')
+    pack_parser.add_argument('output', help='Output tar file path')
     pack_parser.add_argument('--include-images', action='store_true', 
                             help='Include image files (jpg, png, gif, etc.) in the archive')
     pack_parser.add_argument('--include-fonts', action='store_true',
                             help='Include font files (ttf, woff, etc.) in the archive')
     
     # Unpack command
-    unpack_parser = subparsers.add_parser('unpack', help='Unpack a zip archive')
-    unpack_parser.add_argument('zipfile', help='Zip file to unpack')
+    unpack_parser = subparsers.add_parser('unpack', help='Unpack a tar archive')
+    unpack_parser.add_argument('tarfile', help='Tar file to unpack')
     unpack_parser.add_argument('output', help='Output directory')
     
     args = parser.parse_args()
@@ -403,7 +407,7 @@ Examples:
                           include_images=args.include_images,
                           include_fonts=args.include_fonts)
         elif args.command == 'unpack':
-            unpack_archive(args.zipfile, args.output)
+            unpack_archive(args.tarfile, args.output)
     except KeyboardInterrupt:
         print("\n\nOperation cancelled by user.")
         sys.exit(1)
