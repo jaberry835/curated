@@ -13,6 +13,7 @@ __pycache__/
 *.py[cod]
 
 # Virtual environments
+.env.backup
 .env/
 .venv/
 env/
