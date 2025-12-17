@@ -1,7 +1,6 @@
 # curated
 Curated Demo Code
 
+Update 12/17 - Version updates and additional demo code
 Updated - Mid Novemember, removed old code, cleaned up version
 
-Updated 9.16, making sure rep is still working
-Updated 9.17, simple chat main
